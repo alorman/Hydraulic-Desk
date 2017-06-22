@@ -3,13 +3,13 @@
 
 // Global variables
   //Output pin definitions
-  int MotorUpPin = 1;
+  int MotorUpPin = 0;
   int MotorDownPin = 2;
-  int MotorEnable = 4;
+  int MotorEnable = 14;
   //Input pins
-  int PushbuttonPin = 3;
-  int SwitchDirUp = 4;
-  int SwitchDirDown = 5;
+  int PushbuttonPin = 16;
+  int SwitchDirUp = 5;
+  int SwitchDirDown = 4;
 
   //Control variables
   int MotorUpSwitch = 0;
@@ -33,6 +33,9 @@ void setup() {
   pinMode(PushbuttonPin, INPUT);
   pinMode(SwitchDirUp, INPUT);
   pinMode(SwitchDirDown, INPUT);
+
+  //Setup serial 
+  Serial.begin(9600);
 }
 //End Setup loop
 
@@ -60,18 +63,21 @@ void ControlLogic() {
     MotorOutDown = 0;
     MotorOutUp = 1;
     EnableOut = 1;
+    Serial.println("Break 1");
   }
   else if(MotorDownSwitch == HIGH && PushbuttonPushed == HIGH)
   {
     MotorOutUp = 0;
     MotorOutDown = 1;
     EnableOut = 1;
+    Serial.println("Break 2");
   }
   else if(MotorDownSwitch == HIGH || MotorUpSwitch == HIGH && PushbuttonPushed == LOW)
   {
     MotorOutUp = 0;
     MotorOutDown = 0;
     EnableOut = 0;
+    Serial.println("Break 3");
   }
 }
 
@@ -81,10 +87,12 @@ void OutputControl() {
   digitalWrite(MotorDownPin, HIGH);
   digitalWrite(MotorUpPin, LOW);
   digitalWrite(EnableOut, HIGH);
+  Serial.println("Break 5");
   } else {
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(MotorUpPin, LOW); 
   digitalWrite(EnableOut, LOW); 
+  Serial.println("Break 6");
   }
 
   if (MotorOutUp == 1)
@@ -92,10 +100,12 @@ void OutputControl() {
   digitalWrite(MotorUpPin, HIGH);
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(EnableOut, HIGH);
+  Serial.println("Break 7");
  } else {
   digitalWrite(MotorUpPin, LOW);
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(EnableOut, LOW);
+  Serial.println("Break 8");
  }
 }
 
