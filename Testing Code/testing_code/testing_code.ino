@@ -58,21 +58,21 @@ void ReadInputs() {
 }
 
 void ControlLogic() {
-  if(MotorUpSwitch == HIGH && PushbuttonPushed == HIGH)
+  if(MotorUpSwitch == LOW && PushbuttonPushed == LOW)
   {
     MotorOutDown = 0;
     MotorOutUp = 1;
     EnableOut = 1;
     Serial.println("Break 1");
   }
-  else if(MotorDownSwitch == HIGH && PushbuttonPushed == HIGH)
+  else if(MotorDownSwitch == LOW && PushbuttonPushed == LOW)
   {
     MotorOutUp = 0;
     MotorOutDown = 1;
     EnableOut = 1;
     Serial.println("Break 2");
   }
-  else if(MotorDownSwitch == HIGH || MotorUpSwitch == HIGH && PushbuttonPushed == LOW)
+  else if(MotorDownSwitch == LOW || MotorUpSwitch == LOW && PushbuttonPushed == HIGH)
   {
     MotorOutUp = 0;
     MotorOutDown = 0;
