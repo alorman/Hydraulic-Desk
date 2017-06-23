@@ -87,21 +87,21 @@ void OutputControl() {
   {
   digitalWrite(MotorUpPin, HIGH);
   digitalWrite(MotorDownPin, LOW);
-  digitalWrite(EnableOut, HIGH);
+  digitalWrite(MotorEnable, HIGH);
   Serial.println("Break 5");
   }
   if (MotorOutUp == 1)
   {
   digitalWrite(MotorUpPin, LOW);
   digitalWrite(MotorDownPin, HIGH);
-  digitalWrite(EnableOut, HIGH);
+  digitalWrite(MotorEnable, HIGH);
   Serial.println("Break 7");
   }
   if (MotorOutUp == 0 && MotorOutDown == 0)
   {
   digitalWrite(MotorUpPin, LOW);
   digitalWrite(MotorDownPin, LOW);
-  digitalWrite(EnableOut, LOW);
+  digitalWrite(MotorEnable, LOW);
   Serial.println("Break 8");
   }
 }
