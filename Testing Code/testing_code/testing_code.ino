@@ -3,13 +3,13 @@
 
 // Global variables
   //Output pin definitions
-  int MotorUpPin = 0;
-  int MotorDownPin = 2;
-  int MotorEnable = 14;
+  int MotorUpPin = 105;
+  int MotorDownPin = 102;
+  int MotorEnable = 104;
   //Input pins
-  int PushbuttonPin = 16;
-  int SwitchDirUp = 5;
-  int SwitchDirDown = 4;
+  int PushbuttonPin = 13;
+  int SwitchDirUp = 14;
+  int SwitchDirDown = 12;
 
   //Control variables
   int MotorUpSwitch = 0;
@@ -48,6 +48,7 @@ void loop() {
   ControlLogic();
   //now output control
   OutputControl();
+  //Serial.println("Main loop");
 }
 //End main loop
 
@@ -58,26 +59,26 @@ void ReadInputs() {
 }
 
 void ControlLogic() {
-  if(MotorUpSwitch == LOW && PushbuttonPushed == LOW)
+  if(MotorDownSwitch == LOW && PushbuttonPushed == LOW)
   {
     MotorOutDown = 0;
     MotorOutUp = 1;
     EnableOut = 1;
-    Serial.println("Break 1");
+    //Serial.println("Break 1");
   }
-  else if(MotorDownSwitch == LOW && PushbuttonPushed == LOW)
+  else if(MotorUpSwitch == LOW &&PushbuttonPushed == LOW)
   {
-    MotorOutUp = 0;
     MotorOutDown = 1;
+    MotorOutUp = 0;
     EnableOut = 1;
-    Serial.println("Break 2");
+    //Serial.println("Break 2");
   }
-  else if(MotorDownSwitch == LOW || MotorUpSwitch == LOW && PushbuttonPushed == HIGH)
+  if(PushbuttonPushed == HIGH)
   {
     MotorOutUp = 0;
     MotorOutDown = 0;
     EnableOut = 0;
-    Serial.println("Break 3");
+    //Serial.println("Break 3");
   }
 }
 
@@ -88,25 +89,21 @@ void OutputControl() {
   digitalWrite(MotorUpPin, LOW);
   digitalWrite(EnableOut, HIGH);
   Serial.println("Break 5");
-  } else {
-  digitalWrite(MotorDownPin, LOW);
-  digitalWrite(MotorUpPin, LOW); 
-  digitalWrite(EnableOut, LOW); 
-  Serial.println("Break 6");
   }
-
   if (MotorOutUp == 1)
- {
+  {
   digitalWrite(MotorUpPin, HIGH);
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(EnableOut, HIGH);
   Serial.println("Break 7");
- } else {
+  }
+  if (MotorOutUp == 0 && MotorOutDown == 0)
+  {
   digitalWrite(MotorUpPin, LOW);
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(EnableOut, LOW);
   Serial.println("Break 8");
- }
+  }
 }
 
 
