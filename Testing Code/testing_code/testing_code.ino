@@ -3,7 +3,7 @@
 
 // Global variables
   //Output pin definitions
-  int MotorUpPin = 16;
+  int MotorUpPin = 0;
   int MotorDownPin = 5;
   int MotorEnable = 4;
   //Input pins
@@ -85,15 +85,15 @@ void ControlLogic() {
 void OutputControl() {
   if (MotorOutDown == 1)
   {
-  digitalWrite(MotorDownPin, HIGH);
-  digitalWrite(MotorUpPin, LOW);
+  digitalWrite(MotorUpPin, HIGH);
+  digitalWrite(MotorDownPin, LOW);
   digitalWrite(EnableOut, HIGH);
   Serial.println("Break 5");
   }
   if (MotorOutUp == 1)
   {
-  digitalWrite(MotorUpPin, HIGH);
-  digitalWrite(MotorDownPin, LOW);
+  digitalWrite(MotorUpPin, LOW);
+  digitalWrite(MotorDownPin, HIGH);
   digitalWrite(EnableOut, HIGH);
   Serial.println("Break 7");
   }
