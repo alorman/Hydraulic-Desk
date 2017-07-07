@@ -3,13 +3,13 @@
 
 // Global variables
   //Output pin definitions
-  int MotorUpPin = 0;
-  int MotorDownPin = 5;
-  int MotorEnable = 4;
+  int MotorUpPin = 3;
+  int MotorDownPin = 4;
+  int MotorEnable = 5;
   //Input pins
-  int PushbuttonPin = 13;
-  int SwitchDirUp = 14;
-  int SwitchDirDown = 12;
+  int PushbuttonPin = 7;
+  int SwitchDirUp = 8;
+  int SwitchDirDown = 9;
 
   //Control variables
   int MotorUpSwitch = 0;
