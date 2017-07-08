@@ -26,7 +26,7 @@ int distance = 0;
 int LEDsToOn = 0;
 
 //Global input variables
-int Button1 = 1;
+int Button1 = 0;
 
 //Smoothing setup
 int SmoothDistance = 0;
@@ -73,35 +73,49 @@ void loop()
   SmoothDistance = as15.smooth(distance);
   
   if(Button1 == HIGH) {
-    leds[0] = CRGB::Green;
-    FastLED.show();
     LEDFadein(0);
   }else{
-    LEDButtonOff(0);
+    LEDFadeOUT(0);
   }
 }
 
 //led Button response subrouting
 void LEDButtonResponse(int workingLEDNumber){
-  leds[workingLEDNumber] = CRGB::Green;
+  leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment
   FastLED.show();
 }
 
 void LEDButtonOff(int workingLEDNumber){
-  leds[workingLEDNumber] = CRGB::Black;
+  leds[workingLEDNumber] = CHSV( 117, 98, 0 ); //test HSV color assignment
   FastLED.show();
 }
 
 void LEDFadein(int workingLEDNumber){
-  int WorkingBrightness = 0;
-  int FadeAmount = 1;
-  leds[workingLEDNumber] = CRGB::Green;
-  for(int i=0; i <= 256; i++)
+  leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment;
+  FastLED.show();
+  delay(500);
+  for(int i=0; i <= 35; i++)
   {
-    leds[workingLEDNumber].fadeLightBy(WorkingBrightness);
-    Serial.println("in loop");
-    WorkingBrightness = WorkingBrightness + FadeAmount;
+    leds[workingLEDNumber].fadeToBlackBy(64);
+    Serial.println("in loop 1");
+    //WorkingBrightness = WorkingBrightness + FadeAmount;
     FastLED.show();
+    delay(25);
+  }
+}
+
+
+void LEDFadeOUT(int workingLEDNumber){
+  leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment;
+  FastLED.show();
+  delay(500);
+  for(int i=0; i <= 35; i++)
+  {
+    leds[workingLEDNumber].fadeToBlackBy(-64);
+    Serial.println("in loop 2");
+    //WorkingBrightness = WorkingBrightness + FadeAmount;
+    FastLED.show();
+    delay(25);
   }
 }
 
