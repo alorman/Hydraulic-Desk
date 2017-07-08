@@ -14,7 +14,7 @@ void setup()
   Wire.begin();
 
   sensor.init();
-  sensor.setTimeout(1500);
+  sensor.setTimeout(1000);
 
   // Start continuous back-to-back mode (take readings as
   // fast as possible).  To use continuous timed mode
