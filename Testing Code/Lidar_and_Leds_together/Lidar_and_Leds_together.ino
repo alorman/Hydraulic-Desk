@@ -26,7 +26,7 @@ int distance = 0;
 int LEDsToOn = 0;
 
 //Global input variables
-int Button1 = 0;
+int Button1 = 1;
 
 //Smoothing setup
 int SmoothDistance = 0;
@@ -73,7 +73,7 @@ void loop()
   SmoothDistance = as15.smooth(distance);
   
   if(Button1 == HIGH) {
-    LEDFadein(0);
+    LEDFadeIN(0,0,255,255);
   }else{
     LEDFadeOUT(0,0,255,255); //specify the color we want to fade to, in 0-255 format
   }
@@ -90,14 +90,7 @@ void LEDButtonOff(int workingLEDNumber){
   FastLED.show();
 }
 
-void LEDFadein(int workingLEDNumber){
-  leds[workingLEDNumber] = CRGB::Red;
-  FastLED.show();
-  }
-
-
-
-void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV){
+void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV){
   leds[workingLEDNumber] = CHSV ( workingH, workingS, workingV ); //test HSV color assignment;
   FastLED.show();
   Serial.println("delaying 1");
@@ -106,7 +99,22 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV){
   {
     leds[workingLEDNumber] = CHSV(workingH,workingS,cycle);
     Serial.println((String)"in loop 2 " + cycle);
-    //WorkingBrightness = WorkingBrightness + FadeAmount;
+    FastLED.show();
+    delay(2);
+  }
+}
+
+
+
+void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV){
+  leds[workingLEDNumber] = CHSV ( workingH, workingS, workingV ); //test HSV color assignment;
+  FastLED.show();
+  Serial.println("delaying 2");
+  delay(1000);
+  for(int cycle=0; cycle <= 255; cycle = cycle + 5)
+  {
+    leds[workingLEDNumber] = CHSV(workingH,workingS,cycle);
+    Serial.println((String)"in loop 2 " + cycle);
     FastLED.show();
     delay(2);
   }
