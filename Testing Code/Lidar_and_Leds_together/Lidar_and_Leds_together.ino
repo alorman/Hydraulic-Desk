@@ -25,6 +25,9 @@ CRGB leds[NUM_LEDS];
 int distance = 0;
 int LEDsToOn = 0;
 
+//Global input variables
+int Button1 = 0;
+
 //Smoothing setup
 int SmoothDistance = 0;
 AnalogSmooth as15 = AnalogSmooth(15);
@@ -52,6 +55,7 @@ void setup()
 void loop()
 {
 
+  //read the analog values
   
   //Lidar Serial Reporting
   Serial.print(SmoothDistance);
@@ -65,12 +69,21 @@ void loop()
   //smooth the distance readings
   SmoothDistance = as15.smooth(distance);
   
-  //map the distance to the number of leds we have
-  LEDsToOn = map(SmoothDistance, 0, 500, 0, NUM_LEDS);
-  // First, clear the existing led values
-  FastLED.clear();
-  for(int led = 0; led < LEDsToOn; led++) { 
-        leds[led] = CRGB::Red; 
+  if(Button1 == HIGH) {
+    LEDButtonResponse(0);
+  }else{
+    LEDButtonOff(0);
   }
+}
+
+//led Button response subrouting
+void LEDButtonResponse(int workingLEDNumber){
+  leds[workingLEDNumber] = CRGB::Green;
   FastLED.show();
 }
+
+void LEDButtonOff(int workingLEDNumber){
+  leds[workingLEDNumber] = CRGB::Black;
+  FastLED.show();
+}
+
