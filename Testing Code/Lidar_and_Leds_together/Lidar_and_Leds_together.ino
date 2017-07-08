@@ -26,7 +26,7 @@ int distance = 0;
 int LEDsToOn = 0;
 
 //Global input variables
-int Button1 = 0;
+int Button1 = 1;
 
 //Smoothing setup
 int SmoothDistance = 0;
@@ -50,6 +50,9 @@ void setup()
 
   //Initialized LED array
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.clear(); //clear all LEDs before we start too much
+  FastLED.show();
+  delay(100);
 }
 
 void loop()
@@ -70,7 +73,9 @@ void loop()
   SmoothDistance = as15.smooth(distance);
   
   if(Button1 == HIGH) {
-    LEDButtonResponse(0);
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    LEDFadein(0);
   }else{
     LEDButtonOff(0);
   }
@@ -85,5 +90,18 @@ void LEDButtonResponse(int workingLEDNumber){
 void LEDButtonOff(int workingLEDNumber){
   leds[workingLEDNumber] = CRGB::Black;
   FastLED.show();
+}
+
+void LEDFadein(int workingLEDNumber){
+  int WorkingBrightness = 0;
+  int FadeAmount = 1;
+  leds[workingLEDNumber] = CRGB::Green;
+  for(int i=0; i <= 256; i++)
+  {
+    leds[workingLEDNumber].fadeLightBy(WorkingBrightness);
+    Serial.println("in loop");
+    WorkingBrightness = WorkingBrightness + FadeAmount;
+    FastLED.show();
+  }
 }
 
