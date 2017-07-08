@@ -49,7 +49,7 @@ void setup()
   sensor.startContinuous();
 
   //Initialized LED array
-  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.clear(); //clear all LEDs before we start too much
   FastLED.show();
   delay(100);
@@ -75,7 +75,7 @@ void loop()
   if(Button1 == HIGH) {
     LEDFadein(0);
   }else{
-    LEDFadeOUT(0);
+    LEDFadeOUT(0,0,255,255); //specify the color we want to fade to, in 0-255 format
   }
 }
 
@@ -91,31 +91,24 @@ void LEDButtonOff(int workingLEDNumber){
 }
 
 void LEDFadein(int workingLEDNumber){
-  leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment;
+  leds[workingLEDNumber] = CRGB::Red;
   FastLED.show();
-  delay(500);
-  for(int i=0; i <= 35; i++)
-  {
-    leds[workingLEDNumber].fadeToBlackBy(64);
-    Serial.println("in loop 1");
-    //WorkingBrightness = WorkingBrightness + FadeAmount;
-    FastLED.show();
-    delay(25);
   }
-}
 
 
-void LEDFadeOUT(int workingLEDNumber){
-  leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment;
+
+void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV){
+  leds[workingLEDNumber] = CHSV ( workingH, workingS, workingV ); //test HSV color assignment;
   FastLED.show();
-  delay(500);
-  for(int i=0; i <= 35; i++)
+  Serial.println("delaying 1");
+  delay(1000);
+  for(int cycle=0; cycle <= 255; cycle = cycle + 5)
   {
-    leds[workingLEDNumber].fadeToBlackBy(-64);
-    Serial.println("in loop 2");
+    leds[workingLEDNumber] = CHSV(workingH,workingS,cycle);
+    Serial.println((String)"in loop 2 " + cycle);
     //WorkingBrightness = WorkingBrightness + FadeAmount;
     FastLED.show();
-    delay(25);
+    delay(2);
   }
 }
 
