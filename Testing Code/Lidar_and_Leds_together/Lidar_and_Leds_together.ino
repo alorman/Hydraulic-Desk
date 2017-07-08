@@ -27,7 +27,7 @@ int LEDsToOn = 0;
 
 //Smoothing setup
 int SmoothDistance = 0;
-AnalogSmooth as = AnalogSmooth();
+AnalogSmooth as15 = AnalogSmooth(15);
 
 //
 void setup()
@@ -63,10 +63,10 @@ void loop()
   delay(20);
 
   //smooth the distance readings
-  SmoothDistance = as.smooth(distance);
+  SmoothDistance = as15.smooth(distance);
   
   //map the distance to the number of leds we have
-  LEDsToOn = map(SmoothDistance, 0, 1024, 0, NUM_LEDS);
+  LEDsToOn = map(SmoothDistance, 0, 500, 0, NUM_LEDS);
   // First, clear the existing led values
   FastLED.clear();
   for(int led = 0; led < LEDsToOn; led++) { 
