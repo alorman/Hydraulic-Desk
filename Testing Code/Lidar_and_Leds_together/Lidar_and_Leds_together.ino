@@ -20,12 +20,16 @@ VL53L0X sensor;
 CRGB leds[NUM_LEDS];
 #define UPDATES_PER_SECOND 100
 
+//Pin setup
+#define SW1Pin D5
+
 //Global scripting variables
 int distance = 0;
 int LEDsToOn = 0;
 
 //Global input variables
-int Button1 = 1;
+int Button1 = 0;
+int Test1 = 0;
 
 //Global timing variables
 unsigned long previousMillis = 0;
@@ -46,10 +50,10 @@ void setup()
   Wire.begin();
   sensor.init();
   sensor.setTimeout(1500);
-  
-  // Start continuous back-to-back mode (take readings as
-  // fast as possible).  To use continuous timed mode
-  // instead, provide a desired inter-measurement period in
+
+  //pin mode setup
+  pinMode(SW1Pin, INPUT);
+
   // ms (e.g. sensor.startContinuous(100)).
   sensor.startContinuous();
 
@@ -66,7 +70,9 @@ void loop()
   //Global timing functions
   previousMillis = millis();
   
-  //read the analog values
+  //read the analog and digital values
+  Button1 = digitalRead(SW1Pin);
+  //Serial.println(Test1);
   
   //Lidar Serial Reporting
   Serial.print(SmoothDistance);
@@ -81,9 +87,11 @@ void loop()
   SmoothDistance = as15.smooth(distance);
   
   if(Button1 == HIGH) {
-    LEDFadeIN(0,0,255,255,8);
+    LEDFadeIN(0,0,255,255,8); //LEDnumber, Hue, Sat, Value, FadeSpeed
+    workingFadeOUTCycle[0] = 255; //re renable the fade out cycle
   }else{
     LEDFadeOUT(0,0,255,255,8); //specify the color we want to fade to, in 0-255 format
+    workingFadeINCycle[0] = 0; //re enable the fade in cycle
   }
 }
 
