@@ -13,7 +13,7 @@ VL53L0X sensor;
 
 //LED options
 #define LED_PIN     6
-#define NUM_LEDS    5
+#define NUM_LEDS    4
 #define BRIGHTNESS  255
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
