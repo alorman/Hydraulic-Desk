@@ -8,7 +8,6 @@ The range readings are in units of mm. */
 #include <FastLED.h>
 #include <AnalogSmooth.h>
 
-
 //Lidar initialization
 VL53L0X sensor;
 
@@ -26,7 +25,13 @@ int distance = 0;
 int LEDsToOn = 0;
 
 //Global input variables
-int Button1 = 1;
+int Button1 = 0;
+
+//Global timing variables
+unsigned long previousMillis = 0;
+unsigned long currentMillis = 0;
+int workingFadeINCycle[] = {0,0,0,0}; //declare array for working timing
+int workingFadeOUTCycle[] = {255,255,255,255};
 
 //Smoothing setup
 int SmoothDistance = 0;
@@ -58,6 +63,9 @@ void setup()
 void loop()
 {
 
+  //Global timing functions
+  previousMillis = millis();
+  
   //read the analog values
   
   //Lidar Serial Reporting
@@ -73,12 +81,13 @@ void loop()
   SmoothDistance = as15.smooth(distance);
   
   if(Button1 == HIGH) {
-    LEDFadeIN(0,0,255,255);
+    LEDFadeIN(0,0,255,255,8);
   }else{
-    LEDFadeOUT(0,0,255,255); //specify the color we want to fade to, in 0-255 format
+    LEDFadeOUT(0,0,255,255,8); //specify the color we want to fade to, in 0-255 format
   }
 }
 
+/*
 //led Button response subrouting
 void LEDButtonResponse(int workingLEDNumber){
   leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment
@@ -89,24 +98,42 @@ void LEDButtonOff(int workingLEDNumber){
   leds[workingLEDNumber] = CHSV( 117, 98, 0 ); //test HSV color assignment
   FastLED.show();
 }
+*/
 
-void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV){
-  leds[workingLEDNumber] = CHSV ( workingH, workingS, workingV ); //test HSV color assignment;
-  FastLED.show();
-  Serial.println("delaying 1");
-  delay(1000);
-  for(int cycle=0; cycle <= 255; cycle = cycle + 5)
+void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
+  if(workingFadeINCycle[workingLEDNumber] < 255)
   {
-    leds[workingLEDNumber] = CHSV(workingH,workingS,cycle);
-    Serial.println((String)"in loop 2 " + cycle);
-    FastLED.show();
-    delay(2);
+    workingFadeINCycle[workingLEDNumber] = workingFadeINCycle[workingLEDNumber] + workingFadeSpeed; //adjust this number for speed of gain
+    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeINCycle[workingLEDNumber]);
+    Serial.println((String)"in loop 2 " + workingFadeINCycle[workingLEDNumber]);
   }
+  else
+  {
+    leds[workingLEDNumber] = CHSV (workingH, workingS, 255);
+  }
+  delay(2);
+  FastLED.show();
 }
 
+void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
+  if(workingFadeOUTCycle[workingLEDNumber] >= workingFadeSpeed)
+  {
+    workingFadeOUTCycle[workingLEDNumber] = workingFadeOUTCycle[workingLEDNumber] - workingFadeSpeed; //adjust this number for speed of gain
+    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeOUTCycle[workingLEDNumber]);
+    Serial.println((String)"in loop 3 " + workingFadeOUTCycle[workingLEDNumber]);
+  }
+  else
+  {
+    leds[workingLEDNumber] = CHSV (workingH, workingS, 0);
+  }
+  delay(2);
+  FastLED.show();
+}
 
-
-void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV){
+/*
+void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
+  if(workingCycle[workingLEDNumber] < 255)
+  {
   leds[workingLEDNumber] = CHSV ( workingH, workingS, workingV ); //test HSV color assignment;
   FastLED.show();
   Serial.println("delaying 2");
@@ -119,4 +146,4 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV){
     delay(2);
   }
 }
-
+*/
