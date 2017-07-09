@@ -25,7 +25,7 @@ int distance = 0;
 int LEDsToOn = 0;
 
 //Global input variables
-int Button1 = 0;
+int Button1 = 1;
 
 //Global timing variables
 unsigned long previousMillis = 0;
@@ -88,7 +88,8 @@ void loop()
 }
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
-  if(workingFadeINCycle[workingLEDNumber] < 255)
+  int workingEndSpeed = 255- workingFadeSpeed;
+  if(workingFadeINCycle[workingLEDNumber] < workingEndSpeed)
   {
     workingFadeINCycle[workingLEDNumber] = workingFadeINCycle[workingLEDNumber] + workingFadeSpeed; //adjust this number for speed of gain
     leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeINCycle[workingLEDNumber]);
@@ -102,7 +103,8 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, i
 }
 
 void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
-  if(workingFadeOUTCycle[workingLEDNumber] >= workingFadeSpeed)
+  int workingEndSpeed = 0 + workingFadeSpeed;
+  if(workingFadeOUTCycle[workingLEDNumber] >= workingEndSpeed)
   {
     workingFadeOUTCycle[workingLEDNumber] = workingFadeOUTCycle[workingLEDNumber] - workingFadeSpeed; //adjust this number for speed of gain
     leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeOUTCycle[workingLEDNumber]);
