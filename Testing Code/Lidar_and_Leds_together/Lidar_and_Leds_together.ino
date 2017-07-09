@@ -34,8 +34,7 @@ int Test1 = 0;
 //Global timing variables
 unsigned long previousMillis = 0;
 unsigned long currentMillis = 0;
-int workingFadeINCycle[] = {0,0,0,0}; //declare array for working timing
-int workingFadeOUTCycle[] = {255,255,255,255};
+int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 
 //Smoothing setup
 int SmoothDistance = 0;
@@ -88,20 +87,20 @@ void loop()
   
   if(Button1 == HIGH) {
     LEDFadeIN(0,0,255,255,8); //LEDnumber, Hue, Sat, Value, FadeSpeed
-    workingFadeOUTCycle[0] = 255; //re renable the fade out cycle
+    //workingFadeOUTCycle[0] = 255; //re renable the fade out cycle
   }else{
     LEDFadeOUT(0,0,255,255,8); //specify the color we want to fade to, in 0-255 format
-    workingFadeINCycle[0] = 0; //re enable the fade in cycle
+    //workingFadeINCycle[0] = 0; //re enable the fade in cycle
   }
 }
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
   int workingEndSpeed = 255- workingFadeSpeed;
-  if(workingFadeINCycle[workingLEDNumber] < workingEndSpeed)
+  if(workingFadeCycle[workingLEDNumber] < workingEndSpeed)
   {
-    workingFadeINCycle[workingLEDNumber] = workingFadeINCycle[workingLEDNumber] + workingFadeSpeed; //adjust this number for speed of gain
-    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeINCycle[workingLEDNumber]);
-    Serial.println((String)"in loop 2 " + workingFadeINCycle[workingLEDNumber]);
+    workingFadeCycle[workingLEDNumber] = workingFadeCycle[workingLEDNumber] + workingFadeSpeed; //adjust this number for speed of gain
+    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeCycle[workingLEDNumber]);
+    Serial.println((String)"in loop 2 " + workingFadeCycle[workingLEDNumber]);
   }
   else
   {
@@ -112,11 +111,11 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, i
 
 void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
   int workingEndSpeed = 0 + workingFadeSpeed;
-  if(workingFadeOUTCycle[workingLEDNumber] >= workingEndSpeed)
+  if(workingFadeCycle[workingLEDNumber] >= workingEndSpeed)
   {
-    workingFadeOUTCycle[workingLEDNumber] = workingFadeOUTCycle[workingLEDNumber] - workingFadeSpeed; //adjust this number for speed of gain
-    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeOUTCycle[workingLEDNumber]);
-    Serial.println((String)"in loop 3 " + workingFadeOUTCycle[workingLEDNumber]);
+    workingFadeCycle[workingLEDNumber] = workingFadeCycle[workingLEDNumber] - workingFadeSpeed; //adjust this number for speed of gain
+    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeCycle[workingLEDNumber]);
+    Serial.println((String)"in loop 3 " + workingFadeCycle[workingLEDNumber]);
   }
   else
   {
