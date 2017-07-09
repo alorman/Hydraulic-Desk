@@ -87,19 +87,6 @@ void loop()
   }
 }
 
-/*
-//led Button response subrouting
-void LEDButtonResponse(int workingLEDNumber){
-  leds[workingLEDNumber] = CHSV( 117, 98, 255 ); //test HSV color assignment
-  FastLED.show();
-}
-
-void LEDButtonOff(int workingLEDNumber){
-  leds[workingLEDNumber] = CHSV( 117, 98, 0 ); //test HSV color assignment
-  FastLED.show();
-}
-*/
-
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
   if(workingFadeINCycle[workingLEDNumber] < 255)
   {
@@ -111,7 +98,6 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, i
   {
     leds[workingLEDNumber] = CHSV (workingH, workingS, 255);
   }
-  delay(2);
   FastLED.show();
 }
 
@@ -126,24 +112,5 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, 
   {
     leds[workingLEDNumber] = CHSV (workingH, workingS, 0);
   }
-  delay(2);
   FastLED.show();
 }
-
-/*
-void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
-  if(workingCycle[workingLEDNumber] < 255)
-  {
-  leds[workingLEDNumber] = CHSV ( workingH, workingS, workingV ); //test HSV color assignment;
-  FastLED.show();
-  Serial.println("delaying 2");
-  delay(1000);
-  for(int cycle=0; cycle <= 255; cycle = cycle + 5)
-  {
-    leds[workingLEDNumber] = CHSV(workingH,workingS,cycle);
-    Serial.println((String)"in loop 2 " + cycle);
-    FastLED.show();
-    delay(2);
-  }
-}
-*/
