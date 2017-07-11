@@ -86,15 +86,18 @@ void loop()
   SmoothDistance = as15.smooth(distance);
   
   if(Button1 == HIGH) {
-    LEDFadeIN(0,0,255,255,8); //LEDnumber, Hue, Sat, Value, FadeSpeed
+    LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
     //workingFadeOUTCycle[0] = 255; //re renable the fade out cycle
   }else{
-    LEDFadeOUT(0,0,255,255,8); //specify the color we want to fade to, in 0-255 format
+    LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
     //workingFadeINCycle[0] = 0; //re enable the fade in cycle
   }
 }
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
+  workingH = map(workingH, 0, 360, 0, 255); //map H value to 0-360 so that expressions going in can be from a normal color picker
+  workingS = map(workingS, 0, 100, 0, 255);
+  workingV = map(workingV, 0, 100, 0, 255);
   int workingEndSpeed = 255- workingFadeSpeed;
   if(workingFadeCycle[workingLEDNumber] < workingEndSpeed)
   {
@@ -110,6 +113,9 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, i
 }
 
 void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
+  workingH = map(workingH, 0, 360, 0, 255); //map H value to 0-360 so that expressions going in can be from a normal color picker
+  workingS = map(workingS, 0, 100, 0, 255);
+  workingV = map(workingV, 0, 100, 0, 255);  
   int workingEndSpeed = 0 + workingFadeSpeed;
   if(workingFadeCycle[workingLEDNumber] >= workingEndSpeed)
   {
