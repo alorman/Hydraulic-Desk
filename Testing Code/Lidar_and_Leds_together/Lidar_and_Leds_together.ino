@@ -24,8 +24,14 @@ PubSubClient client (espClient);
 long lastMsg = 0;
 char msg[50];
 int value = 0;
+char* connectionStatus = "0";
 String username = "homeassistant";
 String password = "";
+const char* ConnectedTopic = "/desk/connected";
+const char* HeightTopic = "/desk/actualheight";
+const char* CommandedHeightTopic = "/desk/commandedheight";
+const char* ErrorTopic = "/desk/error";
+const char* ExecuteTopic = "/desk/execute";
 
 //Lidar initialization
 VL53L0X sensor;
@@ -202,13 +208,17 @@ void reconnect() {
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str())) {
-      Serial.println("connected");
-      // Once connected, publish an announcement...
-      client.publish("outTopic", "hello world");
-      // ... and resubscribe
-      client.subscribe("inTopic");
+      Serial.println("connected"); //once connected set connected status to 1
+      connectionStatus = "1";
+      client.publish(ConnectedTopic, connectionStatus); //reconnect to all the topics we need to
+      client.subscribe(ConnectedTopic);
+      client.subscribe(HeightTopic);
+      client.subscribe(CommandedHeightTopic);
+      client.subscribe(ErrorTopic);
+      client.subscribe(ExecuteTopic);
     } else {
       WifiAttempts ++;
+      connectionStatus = 0;
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
