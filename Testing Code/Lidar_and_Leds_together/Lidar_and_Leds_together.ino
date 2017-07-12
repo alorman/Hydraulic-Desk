@@ -7,6 +7,25 @@ The range readings are in units of mm. */
 #include <VL53L0X.h>
 #include <FastLED.h>
 #include <AnalogSmooth.h>
+#include <PubSubClient.h>
+#include <ESP8266WiFi.h>
+
+//wifi Initiation
+const char* ssid = "nestlink";
+const char* wifipassword = "nestlink";
+const char* mqtt_server = "192.168.0.127";
+int WifiAttempts = 0;
+int WifiMaxAttempts = 5;
+int WifiOnline = 0;
+
+//setup pubsub
+WiFiClient espClient;
+PubSubClient client (espClient);
+long lastMsg = 0;
+char msg[50];
+int value = 0;
+String username = "homeassistant";
+String password = "";
 
 //Lidar initialization
 VL53L0X sensor;
@@ -61,6 +80,11 @@ void setup()
   FastLED.clear(); //clear all LEDs before we start too much
   FastLED.show();
   delay(100);
+
+  //setup wifi and connect to mqtt
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
 }
 
 void loop()
@@ -74,9 +98,9 @@ void loop()
   //Serial.println(Test1);
   
   //Lidar Serial Reporting
-  Serial.print(SmoothDistance);
-  if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
-  Serial.println();
+  //Serial.print(SmoothDistance);
+  if (sensor.timeoutOccurred()) { Serial.println(" TIMEOUT"); }
+  //Serial.println();
 
   //add variable dealing with distance 
   distance = sensor.readRangeSingleMillimeters();
@@ -92,6 +116,24 @@ void loop()
     LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
     //workingFadeINCycle[0] = 0; //re enable the fade in cycle
   }
+
+
+  //MQTT get established on the connection first
+  if (!client.connected()) {
+      reconnect();
+      }
+    client.loop();
+
+  //MQTT publish message
+  long now = millis();
+   if (now - lastMsg > 2000) {
+    lastMsg = now;
+    ++value;
+    snprintf (msg, 75, "hello world #%ld", value);
+    Serial.print("Publish message: ");
+    Serial.println(msg);
+    client.publish("outTopic", msg);
+}
 }
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
@@ -128,4 +170,60 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, 
     leds[workingLEDNumber] = CHSV (workingH, workingS, 0);
   }
   FastLED.show();
+}
+
+void setup_wifi() {
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, wifipassword);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  randomSeed(micros());
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  WifiOnline = 1;
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  if(!client.connected()&& WifiAttempts <= WifiMaxAttempts) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str())) {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      client.publish("outTopic", "hello world");
+      // ... and resubscribe
+      client.subscribe("inTopic");
+    } else {
+      WifiAttempts ++;
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(1000);
+    }
+  }
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
 }
