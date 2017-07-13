@@ -27,11 +27,19 @@ int value = 0;
 char* connectionStatus = "0";
 String username = "homeassistant";
 String password = "";
-const char* ConnectedTopic = "/desk/connected";
-const char* HeightTopic = "/desk/actualheight";
-const char* CommandedHeightTopic = "/desk/commandedheight";
-const char* ErrorTopic = "/desk/error";
-const char* ExecuteTopic = "/desk/execute";
+
+//MQTT topics and payloads
+char* ConnectedTopic = "/desk/connected";
+char* HeightTopic = "/desk/actualheight";
+char* CommandedHeightTopic = "/desk/commandedheight";
+char* ErrorTopic = "/desk/error";
+char* ExecuteTopic = "/desk/execute";
+int Connected = 0;
+int Height =0;
+int HeightCommanded =0;
+int ErrorCode = 0;
+int ExecuteFlag = 0;
+
 
 //Lidar initialization
 VL53L0X sensor;
@@ -73,19 +81,19 @@ void setup()
   //Lidar initialize
   Wire.begin();
   sensor.init();
-  sensor.setTimeout(1500);
+  sensor.setTimeout(100);
 
   //pin mode setup
   pinMode(SW1Pin, INPUT);
 
   // ms (e.g. sensor.startContinuous(100)).
-  sensor.startContinuous();
+  //sensor.startContinuous();
 
   //Initialized LED array
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.clear(); //clear all LEDs before we start too much
   FastLED.show();
-  delay(100);
+  delay(5);
 
   //setup wifi and connect to mqtt
   setup_wifi();
@@ -97,23 +105,17 @@ void loop()
 {
 
   //Global timing functions
-  previousMillis = millis();
+  currentMillis = millis();
   
   //read the analog and digital values
   Button1 = digitalRead(SW1Pin);
-  //Serial.println(Test1);
   
   //Lidar Serial Reporting
-  //Serial.print(SmoothDistance);
   if (sensor.timeoutOccurred()) { Serial.println(" TIMEOUT"); }
-  //Serial.println();
-
-  //add variable dealing with distance 
   distance = sensor.readRangeSingleMillimeters();
-  delay(20);
-
   //smooth the distance readings
   SmoothDistance = as15.smooth(distance);
+  //Serial.println(SmoothDistance);
   
   if(Button1 == HIGH) {
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
@@ -129,17 +131,16 @@ void loop()
       reconnect();
       }
     client.loop();
-
-  //MQTT publish message
-  long now = millis();
-   if (now - lastMsg > 2000) {
-    lastMsg = now;
-    ++value;
-    snprintf (msg, 75, "hello world #%ld", value);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish("outTopic", msg);
-}
+  if(currentMillis - previousMillis >= 5000) {
+    sendCommandedHeightMessage(SmoothDistance);
+    previousMillis = currentMillis;
+   }else {
+    sendConnectMessage(SmoothDistance);
+   }
+   
+   //sendCommandedHeightMessage(100);
+   Serial.println(millis());
+   //sendHeightMessage(45);
 }
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
@@ -210,7 +211,7 @@ void reconnect() {
     if (client.connect(clientId.c_str())) {
       Serial.println("connected"); //once connected set connected status to 1
       connectionStatus = "1";
-      client.publish(ConnectedTopic, connectionStatus); //reconnect to all the topics we need to
+      //client.publish(ConnectedTopic, connectionStatus); //reconnect to all the topics we need to
       client.subscribe(ConnectedTopic);
       client.subscribe(HeightTopic);
       client.subscribe(CommandedHeightTopic);
@@ -237,3 +238,43 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println();
 }
+
+void sendConnectMessage(int workingConnectedPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingConnectedPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Connected: " + workingPayload);
+   client.publish("/desk/connected", workingPayload);
+  }
+
+void sendHeightMessage(int workingHeightPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingHeightPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Height: " + workingPayload);
+   client.publish("/desk/height", workingPayload);
+  }
+
+void sendCommandedHeightMessage(int workingCommandedHeightPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingCommandedHeightPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Commanded Height: " + workingPayload);
+   client.publish("/desk/commandedheight", workingPayload);
+  }
+
+void sendErrorMessage(int workingErrorPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingErrorPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Error: " + workingPayload);
+   client.publish("/desk/error", workingPayload);
+  }
+
+void sendExecuteMessage(int workingExecutePayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingExecutePayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Execute: " + workingPayload);
+   client.publish("/desk/execute", workingPayload);
+  }
