@@ -60,6 +60,7 @@ CRGB leds[NUM_LEDS];
 //Global scripting variables
 int distance1 = 0;
 int distance2 = 0; //second lidar distance reading
+int mmOutOfLevel = 0;
 int LEDsToOn = 0;
 
 //Global input variables
@@ -249,22 +250,28 @@ void SetupTwinLidars () {
 }
 
 void ReadDistance() {
-  if(Lidar1Shutdown == 1){    
-    if (sensor.timeoutOccurred() || sensor2.timeoutOccurred()) { 
-    Serial.println(" TIMEOUT");    
+  if(Lidar1Shutdown == 1  || sensor.timeoutOccurred() || sensor2.timeoutOccurred()){    
+    Serial.println(" TIMEOUT");
+    ErrorCode = 1;    
     }
+    if(ErrorCode == 0){ //ensure we don't reboot the whole shebang due to error codes on the I2C bus
+      Serial.println("measuring ....");
     distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
     distance2 = sensor2.readRangeSingleMillimeters();
+    }
     //Serial.println((String)"Sensor1: " + distance1);
     //Serial.println((String)"Sensor2: " + distance2);
-   }
-   else {
-    ErrorCode = 1;
-   }
   //smooth the distance readings
   SmoothDistance1 = as15.smooth(distance1);
   SmoothDistance2 = as15.smooth(distance2);
   AverageDistance = (SmoothDistance1 + SmoothDistance2)/2;
+  //calculate the offset between sensors
+  if(SmoothDistance1 >= SmoothDistance2){
+    mmOutOfLevel = SmoothDistance1 - SmoothDistance2;
+    }else{
+    mmOutOfLevel = SmoothDistance2 - SmoothDistance1; 
+    }
+  Serial.println((String) "Out of Level: " + mmOutOfLevel);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
