@@ -76,7 +76,8 @@ int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 int SmoothDistance1 = 0;
 int SmoothDistance2 = 0;
 int AverageDistance = 0;
-AnalogSmooth as15 = AnalogSmooth(15);
+AnalogSmooth SmoothSensor1 = AnalogSmooth(15);
+AnalogSmooth SmoothSensor2 = AnalogSmooth(15);
 
 //
 void setup()
@@ -265,14 +266,14 @@ void ReadDistance() {
     //Serial.println((String)"Sensor1: " + distance1);
     //Serial.println((String)"Sensor2: " + distance2);
   //smooth the distance readings
-  SmoothDistance1 = as15.smooth(distance1);
-  SmoothDistance2 = as15.smooth(distance2);
+  SmoothDistance1 = SmoothSensor1.smooth(distance1);
+  SmoothDistance2 = SmoothSensor2.smooth(distance2);
   AverageDistance = (SmoothDistance1 + SmoothDistance2)/2;
   //calculate the offset between sensors
-  if(distance1 >= distance2){
-    mmOutOfLevel = distance1 - distance2;
+  if(SmoothDistance1 >= SmoothDistance2){
+    mmOutOfLevel = SmoothDistance1 - SmoothDistance2;
     }else{
-    mmOutOfLevel = distance2 - distance1; 
+    mmOutOfLevel = SmoothDistance2 - SmoothDistance1; 
     }
   Serial.println((String) "Out of Level: " + mmOutOfLevel);
 }
