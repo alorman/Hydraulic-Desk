@@ -43,6 +43,8 @@ int ExecuteFlag = 0;
 
 //Lidar initialization
 VL53L0X sensor;
+int Lidar1ShutdownPin = D3;
+int Lidar1Shutdown = 1; //must be 1 to read sensors. In conjuction with timeout being at 0
 
 //LED options
 #define LED_PIN     6
@@ -81,11 +83,12 @@ void setup()
   //Lidar initialize
   Wire.begin();
   sensor.init();
-  sensor.setTimeout(100);
+  sensor.setTimeout(0); //0 seems to work best here although units are not fully understood
 
   //pin mode setup
   pinMode(SW1Pin, INPUT);
-
+  pinMode(Lidar1ShutdownPin, OUTPUT);
+  digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown); 
   // ms (e.g. sensor.startContinuous(100)).
   //sensor.startContinuous();
 
@@ -99,6 +102,7 @@ void setup()
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+  //Serial.println("Setup Done");
 }
 
 void loop()
@@ -111,11 +115,8 @@ void loop()
   Button1 = digitalRead(SW1Pin);
   
   //Lidar Serial Reporting
-  if (sensor.timeoutOccurred()) { Serial.println(" TIMEOUT"); }
-  distance = sensor.readRangeSingleMillimeters();
-  //smooth the distance readings
-  SmoothDistance = as15.smooth(distance);
-  //Serial.println(SmoothDistance);
+  ReadDistance();
+  Serial.println((String)"Smooth Distance : " + SmoothDistance);
   
   if(Button1 == HIGH) {
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
@@ -227,6 +228,20 @@ void reconnect() {
       delay(1000);
     }
   }
+}
+
+void ReadDistance() {
+  if(Lidar1Shutdown == 1){    
+    if (sensor.timeoutOccurred()) { 
+    Serial.println(" TIMEOUT");    
+    }
+    distance = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
+   }
+   else {
+    ErrorCode = 1;
+   }
+  //smooth the distance readings
+  SmoothDistance = as15.smooth(distance);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
