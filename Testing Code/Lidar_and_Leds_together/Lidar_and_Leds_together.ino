@@ -269,10 +269,10 @@ void ReadDistance() {
   SmoothDistance2 = as15.smooth(distance2);
   AverageDistance = (SmoothDistance1 + SmoothDistance2)/2;
   //calculate the offset between sensors
-  if(SmoothDistance1 >= SmoothDistance2){
-    mmOutOfLevel = SmoothDistance1 - SmoothDistance2;
+  if(distance1 >= distance2){
+    mmOutOfLevel = distance1 - distance2;
     }else{
-    mmOutOfLevel = SmoothDistance2 - SmoothDistance1; 
+    mmOutOfLevel = distance2 - distance1; 
     }
   Serial.println((String) "Out of Level: " + mmOutOfLevel);
 }
