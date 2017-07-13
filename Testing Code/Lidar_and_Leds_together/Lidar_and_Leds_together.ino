@@ -21,10 +21,7 @@ int WifiOnline = 0;
 //setup pubsub
 WiFiClient espClient;
 PubSubClient client (espClient);
-long lastMsg = 0;
-char msg[50];
 int value = 0;
-char* connectionStatus = "0";
 String username = "homeassistant";
 String password = "";
 
@@ -34,7 +31,7 @@ char* HeightTopic = "/desk/actualheight";
 char* CommandedHeightTopic = "/desk/commandedheight";
 char* ErrorTopic = "/desk/error";
 char* ExecuteTopic = "/desk/execute";
-int Connected = 0;
+int ConnectedStatus = 0;
 int Height = 0;
 int HeightCommanded = 0;
 int ErrorCode = 0;
@@ -121,7 +118,7 @@ void loop()
   
   //Lidar Serial Reporting
   ReadDistance();
-  Serial.println((String)"Smooth Distance : " + AverageDistance);
+  Serial.println((String)"Smooth Average Distance : " + AverageDistance);
   
   if(Button1 == HIGH) {
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
@@ -141,12 +138,12 @@ void loop()
     sendCommandedHeightMessage(AverageDistance);
     previousMillis = currentMillis;
    }else {
-    sendConnectMessage(AverageDistance);
+    sendConnectMessage(ConnectedStatus);
    }
    
    //sendCommandedHeightMessage(100);
-   Serial.println(millis());
-   //sendHeightMessage(45);
+   //Serial.println(millis());
+   //sendHeightMessage(AverageDistance);
 }
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
@@ -216,7 +213,7 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(clientId.c_str())) {
       Serial.println("connected"); //once connected set connected status to 1
-      connectionStatus = "1";
+      ConnectedStatus = 1;
       //client.publish(ConnectedTopic, connectionStatus); //reconnect to all the topics we need to
       client.subscribe(ConnectedTopic);
       client.subscribe(HeightTopic);
@@ -225,7 +222,7 @@ void reconnect() {
       client.subscribe(ExecuteTopic);
     } else {
       WifiAttempts ++;
-      connectionStatus = 0;
+      ConnectedStatus = 0;
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
@@ -258,8 +255,8 @@ void ReadDistance() {
     }
     distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
     distance2 = sensor2.readRangeSingleMillimeters();
-    Serial.println((String)"Sensor1: " + distance1);
-    Serial.println((String)"Sensor2: " + distance2);
+    //Serial.println((String)"Sensor1: " + distance1);
+    //Serial.println((String)"Sensor2: " + distance2);
    }
    else {
     ErrorCode = 1;
