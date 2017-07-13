@@ -139,7 +139,7 @@ void loop()
     sendCommandedHeightMessage(AverageDistance);
     previousMillis = currentMillis;
    }else {
-    sendConnectMessage(ConnectedStatus);
+    //sendConnectMessage(ConnectedStatus);
    }
    
    //sendCommandedHeightMessage(100);
@@ -251,11 +251,11 @@ void SetupTwinLidars () {
 
 void ReadDistance() {
   if(Lidar1Shutdown == 1  || sensor.timeoutOccurred() || sensor2.timeoutOccurred()){    
-    Serial.println(" TIMEOUT");
-    ErrorCode = 1;    
-    }
+    //Serial.println(" TIMEOUT");
+    ErrorCode = 1;
+    sendErrorMessage(ErrorCode);
+    }    
     if(ErrorCode == 0){ //ensure we don't reboot the whole shebang due to error codes on the I2C bus
-      Serial.println("measuring ....");
     distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
     distance2 = sensor2.readRangeSingleMillimeters();
     }
