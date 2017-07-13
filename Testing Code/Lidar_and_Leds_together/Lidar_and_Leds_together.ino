@@ -35,16 +35,18 @@ char* CommandedHeightTopic = "/desk/commandedheight";
 char* ErrorTopic = "/desk/error";
 char* ExecuteTopic = "/desk/execute";
 int Connected = 0;
-int Height =0;
-int HeightCommanded =0;
+int Height = 0;
+int HeightCommanded = 0;
 int ErrorCode = 0;
 int ExecuteFlag = 0;
 
 
 //Lidar initialization
 VL53L0X sensor;
+VL53L0X sensor2;
 int Lidar1ShutdownPin = D3;
 int Lidar1Shutdown = 1; //must be 1 to read sensors. In conjuction with timeout being at 0
+int LidarTimeOut = 0; //global lidar timeout used in function call to setup
 
 //LED options
 #define LED_PIN     6
@@ -59,7 +61,8 @@ CRGB leds[NUM_LEDS];
 #define SW1Pin D5
 
 //Global scripting variables
-int distance = 0;
+int distance1 = 0;
+int distance2 = 0; //second lidar distance reading
 int LEDsToOn = 0;
 
 //Global input variables
@@ -72,7 +75,9 @@ unsigned long currentMillis = 0;
 int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 
 //Smoothing setup
-int SmoothDistance = 0;
+int SmoothDistance1 = 0;
+int SmoothDistance2 = 0;
+int AverageDistance = 0;
 AnalogSmooth as15 = AnalogSmooth(15);
 
 //
@@ -81,9 +86,8 @@ void setup()
   Serial.begin(9600);
 
   //Lidar initialize
-  Wire.begin();
-  sensor.init();
-  sensor.setTimeout(0); //0 seems to work best here although units are not fully understood
+  
+
 
   //pin mode setup
   pinMode(SW1Pin, INPUT);
@@ -102,6 +106,7 @@ void setup()
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+  SetupTwinLidars();
   //Serial.println("Setup Done");
 }
 
@@ -116,7 +121,7 @@ void loop()
   
   //Lidar Serial Reporting
   ReadDistance();
-  Serial.println((String)"Smooth Distance : " + SmoothDistance);
+  Serial.println((String)"Smooth Distance : " + AverageDistance);
   
   if(Button1 == HIGH) {
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
@@ -133,10 +138,10 @@ void loop()
       }
     client.loop();
   if(currentMillis - previousMillis >= 5000) {
-    sendCommandedHeightMessage(SmoothDistance);
+    sendCommandedHeightMessage(AverageDistance);
     previousMillis = currentMillis;
    }else {
-    sendConnectMessage(SmoothDistance);
+    sendConnectMessage(AverageDistance);
    }
    
    //sendCommandedHeightMessage(100);
@@ -230,18 +235,39 @@ void reconnect() {
   }
 }
 
+void SetupTwinLidars () {
+  Lidar1Shutdown = 0;
+  digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown);
+  delay(100);
+  Wire.begin();
+  sensor2.init(true);
+  sensor2.setAddress((uint8_t)26);
+  sensor2.setTimeout(LidarTimeOut); //0 seems to work best here although units are not fully understood
+  delay(100);
+  Lidar1Shutdown = 1;
+  digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown);
+  sensor.init(true);
+  sensor.setTimeout(LidarTimeOut); //0 seems to work best here although units are not fully understood
+  Serial.println("Sensor changeover complete");
+}
+
 void ReadDistance() {
   if(Lidar1Shutdown == 1){    
-    if (sensor.timeoutOccurred()) { 
+    if (sensor.timeoutOccurred() || sensor2.timeoutOccurred()) { 
     Serial.println(" TIMEOUT");    
     }
-    distance = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
+    distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
+    distance2 = sensor2.readRangeSingleMillimeters();
+    Serial.println((String)"Sensor1: " + distance1);
+    Serial.println((String)"Sensor2: " + distance2);
    }
    else {
     ErrorCode = 1;
    }
   //smooth the distance readings
-  SmoothDistance = as15.smooth(distance);
+  SmoothDistance1 = as15.smooth(distance1);
+  SmoothDistance2 = as15.smooth(distance2);
+  AverageDistance = (SmoothDistance1 + SmoothDistance2)/2;
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
