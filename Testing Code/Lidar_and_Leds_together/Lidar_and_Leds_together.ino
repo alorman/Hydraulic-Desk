@@ -14,8 +14,6 @@ The range readings are in units of mm. */
 const char* ssid = "nestlink";
 const char* wifipassword = "nestlink";
 const char* mqtt_server = "192.168.0.127";
-int WifiAttempts = 0;
-int WifiMaxAttempts = 5;
 int WifiOnline = 0;
 
 //setup pubsub
@@ -36,7 +34,8 @@ int Height = 0;
 int HeightCommanded = 0;
 int ErrorCode = 0;
 int ExecuteFlag = 0;
-
+int ConnectionTries = 0;
+int ConnectionRetries = 5;
 
 //Lidar initialization
 VL53L0X sensor;
@@ -61,14 +60,28 @@ CRGB leds[NUM_LEDS];
 int distance1 = 0;
 int distance2 = 0; //second lidar distance reading
 int mmOutOfLevel = 0;
+int MotorEnable = 0;
 int LEDsToOn = 0;
+int AllowableTilt = 55; //maximum allowable tilt in mm
+int SensorSleep = 1; //flag to stop firing laser pings all the time
+int SuspendInterval = 5000; //mS
 
 //Global input variables
 int Button1 = 0;
-int Test1 = 0;
+int Button2 = 0;
+int Button3 = 0;
+int Button4 = 0;
+int HydPressure = 0;
+int HydPressureLimit = 250; //PSI
+
+//Global Output variables
+#define MotorUpPin D4
+#define MotorDownPin D0
+int MotorRunning = 0;
 
 //Global timing variables
-unsigned long previousMillis = 0;
+unsigned long Timer1 = 0;
+unsigned long Timer2 = 0;
 unsigned long currentMillis = 0;
 int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 
@@ -76,24 +89,21 @@ int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 int SmoothDistance1 = 0;
 int SmoothDistance2 = 0;
 int AverageDistance = 0;
+int LastDistanceShot = 0;
+int DistanceDownPosition = 25;
+int DistanceUpPosition = 1000;
 AnalogSmooth SmoothSensor1 = AnalogSmooth(15);
 AnalogSmooth SmoothSensor2 = AnalogSmooth(15);
 
-//
-void setup()
-{
-  Serial.begin(9600);
-
-  //Lidar initialize
+/////////////////////////////////// Main Setup
+void setup(){
   
-
+  Serial.begin(250000);
 
   //pin mode setup
   pinMode(SW1Pin, INPUT);
   pinMode(Lidar1ShutdownPin, OUTPUT);
   digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown); 
-  // ms (e.g. sensor.startContinuous(100)).
-  //sensor.startContinuous();
 
   //Initialized LED array
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
@@ -101,44 +111,67 @@ void setup()
   FastLED.show();
   delay(5);
 
-  //setup wifi and connect to mqtt
+  //setup wifi
   setup_wifi();
+
+  //connect to mqtt
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+
+  //Setup Lidars
   SetupTwinLidars();
-  //Serial.println("Setup Done");
+  Serial.println("Setup Done");
 }
 
-void loop()
-{
-
+////////////////////////////////////// Main Loop
+void loop() {
+  
   //Global timing functions
   currentMillis = millis();
   
   //read the analog and digital values
   Button1 = digitalRead(SW1Pin);
   
-  //Lidar Serial Reporting
-  ReadDistance();
-  Serial.println((String)"Smooth Average Distance : " + AverageDistance);
+  //enable distance sensing when buttons are pressed and keep on for 5 seconds for good measure
+  if(Button1 == 1 || Button2 == 1 || Button3 == 1 || Button4 == 1){
+    Timer2 = currentMillis;
+  }
+  if(currentMillis - Timer2 >= SuspendInterval){
+    SensorSleep = 1;
+    Serial.println((String)"in the loop: State: " + SensorSleep);
+  }else{
+    SensorSleep = 0;
+    Serial.println((String)"out of loop: State: " + SensorSleep);
+  }
   
+  //Lidar Read Distance
+  if(SensorSleep == 0){
+  ReadDistance();
+  LastDistanceShot = AverageDistance; //stores the last value for comparison
+  sendHeightMessage(LastDistanceShot);
+  Serial.println("reading distances");
+  }
+  
+  //MQTT Check for connection, else 
+  if (!client.connected()) {
+      reconnect();
+      }
+      client.loop();
+      
+  //Run the motor and check for tilt angles otherwise thrown and error and flash the lights
   if(Button1 == HIGH) {
+    
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
-    //workingFadeOUTCycle[0] = 255; //re renable the fade out cycle
+
   }else{
     LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
     //workingFadeINCycle[0] = 0; //re enable the fade in cycle
   }
 
 
-  //MQTT get established on the connection first
-  if (!client.connected()) {
-      reconnect();
-      }
-    client.loop();
-  if(currentMillis - previousMillis >= 5000) {
+  if(currentMillis - Timer1 >= 5000) {
     //sendCommandedHeightMessage(AverageDistance);
-    previousMillis = currentMillis;
+    Timer1 = currentMillis;
    }else {
     //sendConnectMessage(ConnectedStatus);
    }
@@ -147,6 +180,8 @@ void loop()
    //Serial.println(millis());
    //sendHeightMessage(AverageDistance);
 }
+
+/////////////////////////////////////////Functions
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
   workingH = map(workingH, 0, 360, 0, 255); //map H value to 0-360 so that expressions going in can be from a normal color picker
@@ -207,7 +242,7 @@ void setup_wifi() {
 
 void reconnect() {
   // Loop until we're reconnected
-  if(!client.connected()&& WifiAttempts <= WifiMaxAttempts) {
+  if(!client.connected()&& ConnectionTries <= ConnectionRetries) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
     String clientId = "ESP8266Client-";
@@ -223,7 +258,7 @@ void reconnect() {
       client.subscribe(ErrorTopic);
       client.subscribe(ExecuteTopic);
     } else {
-      WifiAttempts ++;
+      ConnectionTries ++;
       ConnectedStatus = 0;
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -248,6 +283,7 @@ void SetupTwinLidars () {
   sensor.init(true);
   sensor.setTimeout(LidarTimeOut); //0 seems to work best here although units are not fully understood
   Serial.println("Sensor changeover complete");
+  delay(100);
 }
 
 void ReadDistance() {
@@ -276,6 +312,30 @@ void ReadDistance() {
     mmOutOfLevel = SmoothDistance2 - SmoothDistance1; 
     }
   Serial.println((String) "Out of Level: " + mmOutOfLevel);
+}
+
+void MotorUp(){
+  if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+    MotorRunning = 1;
+    digitalWrite(MotorUpPin, HIGH);
+  }else{
+    MotorRunning = 0;
+    ErrorCode = 3;
+    sendErrorMessage(ErrorCode);
+    digitalWrite(MotorUpPin, LOW); 
+    }
+}
+
+void MotorDown(){
+  if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+    MotorRunning = 1;
+    digitalWrite(MotorDownPin, HIGH);
+  }else{
+    MotorRunning = 0;
+    ErrorCode = 4;
+    sendErrorMessage(ErrorCode);
+    digitalWrite(MotorDownPin, LOW); 
+    }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
