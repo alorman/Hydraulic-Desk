@@ -158,16 +158,23 @@ void loop() {
       }
       client.loop();
       
-  //Run the motor and check for tilt angles otherwise thrown and error and flash the lights
+  //Run the motor UP on button press and check for tilt angles otherwise thrown and error and flash the lights
   if(Button1 == HIGH) {
-    
+    MotorUp();
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
-
-  }else{
+    }else{
     LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
-    //workingFadeINCycle[0] = 0; //re enable the fade in cycle
-  }
-
+    MotorAllStop();
+    }
+    
+  //Run the motor Down on button press and check the above in function
+  if(Button2 == HIGH) {
+    MotorDown();
+    LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
+    }else{
+    LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
+    MotorAllStop();
+    }
 
   if(currentMillis - Timer1 >= 5000) {
     //sendCommandedHeightMessage(AverageDistance);
@@ -336,6 +343,12 @@ void MotorDown(){
     sendErrorMessage(ErrorCode);
     digitalWrite(MotorDownPin, LOW); 
     }
+}
+
+void MotorAllStop(){
+  digitalWrite(MotorDownPin, LOW);
+  digitalWrite(MotorUpPin, LOW);
+  MotorRunning = 0;
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
