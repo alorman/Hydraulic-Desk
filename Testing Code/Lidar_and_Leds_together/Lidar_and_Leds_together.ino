@@ -53,6 +53,7 @@ int LidarTimeOut = 0; //global lidar timeout used in function call to setup
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
 #define UPDATES_PER_SECOND 100
+#define FASTLED_ALLOW_INTERRUPTS 0
 
 //Pin setup
 #define SW1Pin D5
@@ -76,8 +77,8 @@ int HydPressure = 0;
 int HydPressureLimit = 250; //PSI
 
 //Global Output variables
-#define MotorUpPin D4
-#define MotorDownPin D0
+#define MotorUpPin D7
+#define MotorDownPin D8
 int MotorRunning = 0;
 
 //Global timing variables
@@ -171,9 +172,9 @@ void loop() {
   //Run the motor Down on button press and check the above in function
   if(Button2 == HIGH) {
     MotorDown();
-    LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
+    LEDFadeIN(1,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
     }else{
-    LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
+    LEDFadeOUT(1,219,77,100,75); //specify the color we want to fade to, in 0-255 format
     MotorAllStop();
     }
 
@@ -261,10 +262,10 @@ void reconnect() {
       Serial.println("connected"); //once connected set connected status to 1
       ConnectedStatus = 1;
       //client.publish(ConnectedTopic, connectionStatus); //reconnect to all the topics we need to
-      client.subscribe(ConnectedTopic);
-      client.subscribe(HeightTopic);
+      //client.subscribe(ConnectedTopic);
+      //client.subscribe(HeightTopic);
       client.subscribe(CommandedHeightTopic);
-      client.subscribe(ErrorTopic);
+      //client.subscribe(ErrorTopic);
       client.subscribe(ExecuteTopic);
     } else {
       ConnectionTries ++;
