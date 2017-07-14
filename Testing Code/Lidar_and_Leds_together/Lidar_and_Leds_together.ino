@@ -32,6 +32,7 @@ char* ExecuteTopic = "/desk/execute";
 int ConnectedStatus = 0;
 int Height = 0;
 int HeightCommanded = 0;
+int TargetHeightTolerance = 10;
 int ErrorCode = 0;
 int ExecuteFlag = 0;
 int ConnectionTries = 0;
@@ -176,6 +177,7 @@ void loop() {
     MotorAllStop();
     }
 
+  
   if(currentMillis - Timer1 >= 5000) {
     //sendCommandedHeightMessage(AverageDistance);
     Timer1 = currentMillis;
@@ -323,6 +325,7 @@ void ReadDistance() {
 
 void MotorUp(){
   if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+    Timer2 = currentMillis; //reset sensing suspend clock
     MotorRunning = 1;
     digitalWrite(MotorUpPin, HIGH);
   }else{
@@ -335,6 +338,7 @@ void MotorUp(){
 
 void MotorDown(){
   if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+    Timer2 = currentMillis; //reset sensing suspend clock
     MotorRunning = 1;
     digitalWrite(MotorDownPin, HIGH);
   }else{
@@ -351,6 +355,19 @@ void MotorAllStop(){
   MotorRunning = 0;
 }
 
+void MotorToCommandedHeight(int workingCommandedHeight){
+  if(workingCommandedHeight >= AverageDistance + TargetHeightTolerance){
+  MotorUp();
+ }else{
+  MotorDown();
+  Timer2 = currentMillis; //reset sensing suspend clock  
+ }
+ if(workingCommandedHeight >= AverageDistance + TargetHeightTolerance || workingCommandedHeight >= AverageDistance - TargetHeightTolerance){
+  MotorAllStop();
+  sendHeightMessage(AverageDistance);
+ }
+} 
+ 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
