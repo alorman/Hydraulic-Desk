@@ -9,6 +9,7 @@ The range readings are in units of mm. */
 #include <AnalogSmooth.h>
 #include <PubSubClient.h>
 #include <ESP8266WiFi.h>
+#include <EEPROM.h>
 
 //wifi Initiation
 const char* ssid = "nestlink";
@@ -67,6 +68,8 @@ int LEDsToOn = 0;
 int AllowableTilt = 55; //maximum allowable tilt in mm
 int SensorSleep = 1; //flag to stop firing laser pings all the time
 int SuspendInterval = 5000; //mS
+int MotorSecondsOnCount = 0;
+int MotorTempOnCount = 0;
 
 //Global input variables
 int Button1 = 0;
@@ -84,6 +87,7 @@ int MotorRunning = 0;
 //Global timing variables
 unsigned long Timer1 = 0;
 unsigned long Timer2 = 0;
+unsigned long Timer3 = 0;
 unsigned long currentMillis = 0;
 int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 
@@ -106,7 +110,7 @@ void setup(){
   pinMode(SW1Pin, INPUT);
   pinMode(Lidar1ShutdownPin, OUTPUT);
   digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown); 
-
+  
   //Initialized LED array
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.clear(); //clear all LEDs before we start too much
@@ -120,6 +124,10 @@ void setup(){
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 
+  //Read the seconds motor has run in eeprom
+  //eepromClear();
+  eepromReadSeconds();
+  
   //Setup Lidars
   SetupTwinLidars();
   Serial.println("Setup Done");
@@ -327,12 +335,17 @@ void ReadDistance() {
 void MotorUp(){
   if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
     Timer2 = currentMillis; //reset sensing suspend clock
+      if(MotorRunning == 0) {
+      MotorTempOnCount = millis();
+      }
     MotorRunning = 1;
     digitalWrite(MotorUpPin, HIGH);
   }else{
     MotorRunning = 0;
     ErrorCode = 3;
     sendErrorMessage(ErrorCode);
+    MotorSecondsOnCount = (millis() - MotorTempOnCount)/ 1000;
+    MotorTempOnCount = 0;
     digitalWrite(MotorUpPin, LOW); 
     }
 }
@@ -340,12 +353,17 @@ void MotorUp(){
 void MotorDown(){
   if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
     Timer2 = currentMillis; //reset sensing suspend clock
+      if(MotorRunning == 0) {
+      MotorTempOnCount = millis();
+      }
     MotorRunning = 1;
     digitalWrite(MotorDownPin, HIGH);
   }else{
     MotorRunning = 0;
     ErrorCode = 4;
     sendErrorMessage(ErrorCode);
+    MotorSecondsOnCount = (millis() - MotorTempOnCount)/ 1000;
+    MotorTempOnCount = 0;
     digitalWrite(MotorDownPin, LOW); 
     }
 }
@@ -354,6 +372,8 @@ void MotorAllStop(){
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(MotorUpPin, LOW);
   MotorRunning = 0;
+  MotorSecondsOnCount = (millis() - MotorTempOnCount)/ 1000;
+  MotorTempOnCount = 0;
 }
 
 void MotorToCommandedHeight(int workingCommandedHeight){
@@ -418,3 +438,27 @@ void sendExecuteMessage(int workingExecutePayload){
    Serial.println((String)"Execute: " + workingPayload);
    client.publish("/desk/execute", workingPayload);
   }
+
+void eepromWriteSeconds(){
+  int tempEEPROMread = 0;
+  int tempNewSecondsValue = 0;
+  EEPROM.begin(4);
+  tempEEPROMread = EEPROM.read(1);
+  tempNewSecondsValue = tempEEPROMread + MotorSecondsOnCount;
+  EEPROM.write(1, tempNewSecondsValue);
+  EEPROM.commit();
+  Serial.println((String)"EEPROM write :" + tempNewSecondsValue);
+}
+
+void eepromClear(){
+  EEPROM.begin(4);
+  EEPROM.write(1, 0);
+  EEPROM.commit();
+}
+void eepromReadSeconds(){
+  EEPROM.begin(4);
+  MotorSecondsOnCount = EEPROM.read(1);
+  EEPROM.commit();
+  Serial.println((String)"EEPROM read :" +MotorSecondsOnCount);
+}
+
