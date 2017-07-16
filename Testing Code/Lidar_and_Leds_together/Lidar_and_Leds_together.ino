@@ -83,6 +83,7 @@ int HydPressureLimit = 250; //PSI
 #define MotorUpPin D7
 #define MotorDownPin D8
 int MotorRunning = 0;
+int NewMotorData = 0;
 
 //Global timing variables
 unsigned long Timer1 = 0;
@@ -154,6 +155,11 @@ void loop() {
     SensorSleep = 0;
     Serial.println((String)"out of loop: State: " + SensorSleep);
     }
+    
+  //Send motor on time packet over mqtt only when there's not a ton else to do)
+  if(SensorSleep == 1 && NewMotorData == 1) {
+    sendTimeOnCount();
+  }
   
   //Lidar Read Distance
   if(SensorSleep == 0){
@@ -345,6 +351,7 @@ void MotorUp(){
          MotorTempOnCount = currentMillis;
          }
     MotorRunning = 1;
+    NewMotorData = 1;
     Serial.println(MotorTempOnCount);
     digitalWrite(MotorUpPin, HIGH);
     Serial.println("motor running up");
@@ -455,16 +462,25 @@ void sendExecuteMessage(int workingExecutePayload){
    client.publish("/desk/execute", workingPayload);
   }
 
+void sendTimeOnCount(){
+  char workingPayload[100];
+  snprintf (workingPayload, 100, "%ld", MotorSecondsOnCount);
+  NewMotorData = 0;
+  Serial.print("Sending Message: ");
+  Serial.println((String)"Seconds On Count: " + MotorSecondsOnCount);
+  client.publish("/desk/SecondsOn", workingPayload);
+}
+
 void eepromWriteSeconds(){
   int tempEEPROMread = 0;
   int tempEEPROMtoWrite = 0;
   EEPROM.begin(4);
   tempEEPROMread = EEPROM.read(1);
   Serial.println((String)"Previous EEPROM: "+ tempEEPROMread);
-  tempEEPROMtoWrite = tempEEPROMread + MotorSecondsOnCount;
-  EEPROM.write(1, tempEEPROMtoWrite);
+  MotorSecondsOnCount = tempEEPROMread + MotorSecondsOnCount;
+  EEPROM.write(1, MotorSecondsOnCount);
   EEPROM.commit();
-  Serial.println((String)"EEPROM write :" + tempEEPROMtoWrite);
+  Serial.println((String)"EEPROM write :" + MotorSecondsOnCount);
 }
 
 void eepromClear(){
@@ -476,6 +492,6 @@ void eepromReadSeconds(){
   EEPROM.begin(4);
   MotorSecondsOnCount = EEPROM.read(1);
   EEPROM.commit();
-  Serial.println((String)"EEPROM read :" +MotorSecondsOnCount);
+  Serial.println((String)"EEPROM read :" + MotorSecondsOnCount);
 }
 
