@@ -463,12 +463,14 @@ void sendExecuteMessage(int workingExecutePayload){
   }
 
 void sendTimeOnCount(){
+  long tempMinutesOnCount = 0;
   char workingPayload[100];
-  snprintf (workingPayload, 100, "%ld", MotorSecondsOnCount);
+  tempMinutesOnCount = MotorSecondsOnCount / 60;
+  snprintf (workingPayload, 100, "%ld", tempMinutesOnCount);
   NewMotorData = 0;
   Serial.print("Sending Message: ");
-  Serial.println((String)"Seconds On Count: " + MotorSecondsOnCount);
-  client.publish("/desk/SecondsOn", workingPayload);
+  Serial.println((String)"Seconds On Count: " + tempMinutesOnCount);
+  client.publish("/desk/MinutesOn", workingPayload);
 }
 
 void eepromWriteSeconds(){
