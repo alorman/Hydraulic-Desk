@@ -32,8 +32,8 @@ char* ErrorTopic = "/desk/error";
 char* ExecuteTopic = "/desk/execute";
 int ConnectedStatus = 0;
 int Height = 0;
-int HeightCommanded = 0;
-int TargetHeightTolerance = 10;
+float HeightCommanded = 0.0;
+int TargetHeightTolerance = 1;
 int ErrorCode = 0;
 int ExecuteFlag = 0;
 int ConnectionTries = 0;
@@ -70,6 +70,7 @@ int SensorSleep = 0; //flag to stop firing laser pings all the time
 int SuspendInterval = 5000; //mS
 unsigned long MotorSecondsOnCount = 0;
 unsigned long MotorTempOnCount = 0;
+int newCommandReady = 0;
 
 //Global input variables
 int Button1 = 0;
@@ -166,7 +167,7 @@ void loop() {
   //Lidar Read Distance
   if(SensorSleep == 0){
     ReadDistance();
-    Serial.println("reading distances");
+    Serial.println((String)"reading distances: " + AverageDistance);
     }
   
   //MQTT Check for connection, else 
@@ -198,6 +199,9 @@ void loop() {
     MotorAllStop();
     }
 */
+  if(newCommandReady == 1){
+    MotorToCommandedHeight(HeightCommanded);
+   }
   
   if(currentMillis - Timer1 >= 5000) {
     //sendCommandedHeightMessage(AverageDistance);
@@ -325,10 +329,10 @@ void ReadDistance() {
     }else{
     ErrorCode = 0;    
     }
-    if(ErrorCode == 0){ //ensure we don't reboot the whole shebang due to error codes on the I2C bus
-    distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
-    distance2 = sensor2.readRangeSingleMillimeters();
-    }
+  if(ErrorCode == 0){ //ensure we don't reboot the whole shebang due to error codes on the I2C bus
+  distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
+  distance2 = sensor2.readRangeSingleMillimeters();
+  }
     //Serial.println((String)"Sensor1: " + distance1);
     //Serial.println((String)"Sensor2: " + distance2);
   //smooth the distance readings
@@ -374,6 +378,7 @@ void MotorDown(){
          MotorTempOnCount = currentMillis;
          }
     MotorRunning = 1;
+    NewMotorData = 1;
     digitalWrite(MotorDownPin, HIGH);
     Serial.println("motor running down");
  /* }else{
@@ -399,27 +404,43 @@ void MotorAllStop(){
   MotorRunning = 0;
 }
 
-void MotorToCommandedHeight(int workingCommandedHeight){
-  if(workingCommandedHeight >= AverageDistance + TargetHeightTolerance){
+void MotorToCommandedHeight(float workingCommandedHeight){
+  if(workingCommandedHeight >= AverageDistance){
+  Timer2 = currentMillis; //reset sensing suspend clock 
+  Serial.println("ordered up, going up");
   MotorUp();
- }else{
-  MotorDown();
-  Timer4 = currentMillis; //reset sensing suspend clock  
- }
- if(workingCommandedHeight >= AverageDistance + TargetHeightTolerance || workingCommandedHeight >= AverageDistance - TargetHeightTolerance){
+  }else if(workingCommandedHeight <= AverageDistance){
+  Timer2 = currentMillis; //reset sensing suspend clock 
+  Serial.println("ordered down, going down");
+  MotorDown(); 
+  }
+ if(workingCommandedHeight <= AverageDistance + TargetHeightTolerance || workingCommandedHeight >= AverageDistance - TargetHeightTolerance){
+  Serial.println("good enough, stoppping here");
   MotorAllStop();
-  sendHeightMessage(AverageDistance);
- }
+  newCommandReady = 0;
+  }
 } 
  
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(String topic, byte* payload, unsigned int length) {
+  String workingCommandedHeightString = "0";
+  int i = 0;
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+  for (i; i < length; i++) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
+  if(topic == "/desk/commandedheight"){
+    workingCommandedHeightString = String((char*)payload);
+    HeightCommanded = workingCommandedHeightString.toFloat();
+    Serial.print("height commanded: ");
+    Serial.println(HeightCommanded, 1);
+    newCommandReady = 1;
+   }
+  if(topic == "/desk/execute"){
+    
+   }
 }
 
 void sendConnectMessage(int workingConnectedPayload){ 
