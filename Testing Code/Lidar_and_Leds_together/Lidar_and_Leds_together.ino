@@ -159,13 +159,13 @@ void loop() {
   //Send motor on time packet over mqtt only when there's not a ton else to do)
   if(SensorSleep == 1 && NewMotorData == 1) {
     sendTimeOnCount();
+    LastDistanceShot = AverageDistance; //stores the last value for comparison
+    sendHeightMessage(LastDistanceShot);
   }
   
   //Lidar Read Distance
   if(SensorSleep == 0){
     ReadDistance();
-    LastDistanceShot = AverageDistance; //stores the last value for comparison
-   sendHeightMessage(LastDistanceShot);
     Serial.println("reading distances");
     }
   
@@ -431,8 +431,12 @@ void sendConnectMessage(int workingConnectedPayload){
   }
 
 void sendHeightMessage(int workingHeightPayload){ 
-   char workingPayload[50];
-   snprintf (workingPayload, 100, "%d", workingHeightPayload);
+   char workingPayload[100];
+   float workingHeightPayloadFloat;
+   workingHeightPayloadFloat = workingHeightPayload/25.4;
+   //snprintf (workingPayload, 100, "%s", workingHeightPayloadFloat);
+   dtostrf(workingHeightPayloadFloat, 3, 1, workingPayload);
+   Serial.println((String)"float payload " + workingHeightPayloadFloat);
    Serial.print("Sending Message: ");
    Serial.println((String)"Height: " + workingPayload);
    client.publish("/desk/height", workingPayload);
@@ -469,13 +473,13 @@ void sendTimeOnCount(){
   snprintf (workingPayload, 100, "%ld", tempMinutesOnCount);
   NewMotorData = 0;
   Serial.print("Sending Message: ");
-  Serial.println((String)"Seconds On Count: " + tempMinutesOnCount);
+  Serial.println((String)"Minutes On Count: " + tempMinutesOnCount);
   client.publish("/desk/MinutesOn", workingPayload);
 }
 
 void eepromWriteSeconds(){
-  int tempEEPROMread = 0;
-  int tempEEPROMtoWrite = 0;
+  unsigned long tempEEPROMread = 0;
+  unsigned long tempEEPROMtoWrite = 0;
   EEPROM.begin(4);
   tempEEPROMread = EEPROM.read(1);
   Serial.println((String)"Previous EEPROM: "+ tempEEPROMread);
