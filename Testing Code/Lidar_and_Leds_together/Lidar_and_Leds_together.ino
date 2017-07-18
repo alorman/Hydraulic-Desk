@@ -71,6 +71,7 @@ int SuspendInterval = 5000; //mS
 unsigned long MotorSecondsOnCount = 0;
 unsigned long MotorTempOnCount = 0;
 int newCommandReady = 0;
+float PreviousDistance = 0;
 
 //Global input variables
 int Button1 = 0;
@@ -177,15 +178,15 @@ void loop() {
       client.loop();
       
   //Run the motor UP on button press and check for tilt angles otherwise thrown and error and flash the lights
-  if(Button1 == HIGH) {
+  if(Button1 == HIGH && newCommandReady == 0) {
     MotorUp();
     LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
     Serial.println("motor running up on button");
     }
-    if(Button1 == LOW) {
+    if(Button1 == LOW && newCommandReady == 0) {
     LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
     MotorAllStop();
-    //Serial.println("motor all stop");
+    //Serial.println("motor stopping on key not pressed");
     }
 
     /* //This is having issues due to resetting button 1 and motor controllers stuff rewrtie logic
@@ -201,7 +202,7 @@ void loop() {
 */
   if(newCommandReady == 1){
     MotorToCommandedHeight(HeightCommanded);
-   }
+    }
   
   if(currentMillis - Timer1 >= 5000) {
     //sendCommandedHeightMessage(AverageDistance);
@@ -359,7 +360,7 @@ void MotorUp(){
     Serial.println(MotorTempOnCount);
     digitalWrite(MotorUpPin, HIGH);
     Serial.println("motor running up");
-    Serial.println(MotorRunning);
+    Serial.println((String)"Motor State Variable: " + MotorRunning);
   /*}else{
     MotorRunning = 0;
     ErrorCode = 3;
@@ -402,9 +403,16 @@ void MotorAllStop(){
     }
   //MotorTempOnCount = 0;
   MotorRunning = 0;
+  NewMotorData = 0;
 }
 
 void MotorToCommandedHeight(float workingCommandedHeight){
+  float workingHeightChangeLimit = 20.0; //must be with padded zero due to floating
+  int workingMotorCheckInterval = 2000; //milliseconds
+  int workingCurrentMillis = millis();
+  float workingHeightUpper = AverageDistance + TargetHeightTolerance;
+  float workingHeightLower = AverageDistance - TargetHeightTolerance;
+  float workingPreviousDistance = AverageDistance;
   if(workingCommandedHeight >= AverageDistance){
   Timer2 = currentMillis; //reset sensing suspend clock 
   Serial.println("ordered up, going up");
@@ -414,7 +422,22 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   Serial.println("ordered down, going down");
   MotorDown(); 
   }
- if(workingCommandedHeight <= AverageDistance + TargetHeightTolerance || workingCommandedHeight >= AverageDistance - TargetHeightTolerance){
+ if(PreviousDistance == 0){
+  PreviousDistance = AverageDistance;
+  Timer3 = workingCurrentMillis;
+  }
+ if(workingCurrentMillis - Timer3 >= workingMotorCheckInterval) {
+  Serial.println("in command height timing loop");
+  Serial.println((String)"Timing bits// workingCurrent: " + workingCurrentMillis + " Timer3: " + Timer3);
+  Timer3 = workingCurrentMillis;
+   if(AverageDistance <= (AverageDistance + workingHeightChangeLimit)||AverageDistance >= (AverageDistance - workingHeightChangeLimit)){
+     Serial.println("Motor didn't move enough, stopping");
+     MotorAllStop();
+     newCommandReady = 0;
+    }
+   PreviousDistance = 0;
+  }
+ if(workingHeightUpper >= workingCommandedHeight && workingHeightLower <= workingCommandedHeight){
   Serial.println("good enough, stoppping here");
   MotorAllStop();
   newCommandReady = 0;
