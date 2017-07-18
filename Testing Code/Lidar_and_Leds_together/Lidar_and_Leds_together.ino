@@ -100,8 +100,8 @@ int SmoothDistance1 = 0;
 int SmoothDistance2 = 0;
 int AverageDistance = 0;
 int LastDistanceShot = 0;
-int DistanceDownPosition = 25;
-int DistanceUpPosition = 1000;
+float DistanceDownStop = 24.0; //inches, float. Include padded zero
+float DistanceUpStop = 58.0; //inches, float. Include padded zero
 AnalogSmooth SmoothSensor1 = AnalogSmooth(15);
 AnalogSmooth SmoothSensor2 = AnalogSmooth(15);
 
@@ -350,7 +350,7 @@ void ReadDistance() {
 }
 
 void MotorUp(){
-  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownStop && AverageDistance < DistanceUpStop){
     Timer2 = currentMillis; //reset sensing suspend clock
       if(MotorRunning == 0){ //stop syncing the motor on timer 
          MotorTempOnCount = currentMillis;
@@ -373,7 +373,7 @@ void MotorUp(){
 }
 
 void MotorDown(){
-  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownStop && AverageDistance < DistanceUpStop){
     Timer2 = currentMillis; //reset sensing suspend clock
       if(MotorRunning == 0) { // stop syncing the motor on timer
          MotorTempOnCount = currentMillis;
@@ -413,6 +413,11 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   float workingHeightUpper = AverageDistance + TargetHeightTolerance;
   float workingHeightLower = AverageDistance - TargetHeightTolerance;
   float workingPreviousDistance = AverageDistance;
+  if(workingCommandedHeight <= DistanceDownStop || workingCommandedHeight >= DistanceUpStop){
+    sendErrorMessage(5);
+    newCommandReady = 0;
+    Serial.println("Commanded Out of Bounds");
+  }else{
   if(workingCommandedHeight >= AverageDistance){
   Timer2 = currentMillis; //reset sensing suspend clock 
   Serial.println("ordered up, going up");
@@ -432,6 +437,7 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   Timer3 = workingCurrentMillis;
    if(AverageDistance <= (AverageDistance + workingHeightChangeLimit)||AverageDistance >= (AverageDistance - workingHeightChangeLimit)){
      Serial.println("Motor didn't move enough, stopping");
+     sendErrorMessage(6);
      MotorAllStop();
      newCommandReady = 0;
     }
@@ -442,6 +448,7 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   MotorAllStop();
   newCommandReady = 0;
   }
+ }
 } 
  
 void callback(String topic, byte* payload, unsigned int length) {
