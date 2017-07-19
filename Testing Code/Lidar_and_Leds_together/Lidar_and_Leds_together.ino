@@ -1,18 +1,58 @@
-#include "FastLED.h"
+/* This example shows how to use continuous mode to take
+range measurements with the VL53L0X. It is based on
+vl53l0x_ContinuousRanging_Example.c from the VL53L0X API.
+The range readings are in units of mm. */
+#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+#include <Wire.h>
+#include <VL53L0X.h>
+#include <FastLED.h>
+#include <AnalogSmooth.h>
+#include <PubSubClient.h>
+#include <ESP8266WiFi.h>
+#include <EEPROM.h>
 
-// How many leds in your strip?
-#define NUM_LEDS 44 
+//wifi Initiation
+const char* ssid = "nestlink";
+const char* wifipassword = "nestlink";
+const char* mqtt_server = "192.168.0.127";
+int WifiOnline = 0;
 
-// For led chips like Neopixels, which have a data line, ground, and power, you just
-// need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
-// ground, and power), like the LPD8806, define both DATA_PIN and CLOCK_PIN
-#define DATA_PIN 6
-//#define CLOCK_PIN 13
+//setup pubsub
+WiFiClient espClient;
+PubSubClient client (espClient);
+int value = 0;
+String username = "homeassistant";
+String password = "";
 
-// Define the array of leds
+//MQTT topics and payloads
+char* ConnectedTopic = "/desk/connected";
+char* HeightTopic = "/desk/actualheight";
+char* CommandedHeightTopic = "/desk/commandedheight";
+char* ErrorTopic = "/desk/error";
+char* ExecuteTopic = "/desk/execute";
+int ConnectedStatus = 0;
+int Height = 0;
+float HeightCommanded = 0.0;
+int TargetHeightTolerance = 1;
+int ErrorCode = 0;
+int ExecuteFlag = 0;
+int ConnectionTries = 0;
+int ConnectionRetries = 5;
+
+//Lidar initialization
+VL53L0X sensor;
+VL53L0X sensor2;
+int Lidar1ShutdownPin = D3;
+int Lidar1Shutdown = 1; //must be 1 to read sensors. In conjuction with timeout being at 0
+int LidarTimeOut = 0; //global lidar timeout used in function call to setup
+
+//LED options
+#define LED_PIN     6
+#define NUM_LEDS    4
+#define BRIGHTNESS  255
+#define LED_TYPE    WS2811
+#define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
-<<<<<<< HEAD
-=======
 #define UPDATES_PER_SECOND 100
 #define FASTLED_ALLOW_INTERRUPTS 0
 
@@ -60,8 +100,8 @@ int SmoothDistance1 = 0;
 int SmoothDistance2 = 0;
 int AverageDistance = 0;
 int LastDistanceShot = 0;
-int DistanceDownPosition = 25;
-int DistanceUpPosition = 1000;
+float DistanceDownStop = 24.0; //inches, float. Include padded zero
+float DistanceUpStop = 58.0; //inches, float. Include padded zero
 AnalogSmooth SmoothSensor1 = AnalogSmooth(15);
 AnalogSmooth SmoothSensor2 = AnalogSmooth(15);
 
@@ -310,7 +350,7 @@ void ReadDistance() {
 }
 
 void MotorUp(){
-  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownStop && AverageDistance < DistanceUpStop){
     Timer2 = currentMillis; //reset sensing suspend clock
       if(MotorRunning == 0){ //stop syncing the motor on timer 
          MotorTempOnCount = currentMillis;
@@ -333,7 +373,7 @@ void MotorUp(){
 }
 
 void MotorDown(){
-  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownPosition && AverageDistance < DistanceUpPosition){
+  //if(mmOutOfLevel <= AllowableTilt && HydPressure < HydPressureLimit && AverageDistance > DistanceDownStop && AverageDistance < DistanceUpStop){
     Timer2 = currentMillis; //reset sensing suspend clock
       if(MotorRunning == 0) { // stop syncing the motor on timer
          MotorTempOnCount = currentMillis;
@@ -373,6 +413,11 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   float workingHeightUpper = AverageDistance + TargetHeightTolerance;
   float workingHeightLower = AverageDistance - TargetHeightTolerance;
   float workingPreviousDistance = AverageDistance;
+  if(workingCommandedHeight <= DistanceDownStop || workingCommandedHeight >= DistanceUpStop){
+    sendErrorMessage(5);
+    newCommandReady = 0;
+    Serial.println("Commanded Out of Bounds");
+  }else{
   if(workingCommandedHeight >= AverageDistance){
   Timer2 = currentMillis; //reset sensing suspend clock 
   Serial.println("ordered up, going up");
@@ -392,6 +437,7 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   Timer3 = workingCurrentMillis;
    if(AverageDistance <= (AverageDistance + workingHeightChangeLimit)||AverageDistance >= (AverageDistance - workingHeightChangeLimit)){
      Serial.println("Motor didn't move enough, stopping");
+     sendErrorMessage(6);
      MotorAllStop();
      newCommandReady = 0;
     }
@@ -402,6 +448,7 @@ void MotorToCommandedHeight(float workingCommandedHeight){
   MotorAllStop();
   newCommandReady = 0;
   }
+ }
 } 
  
 void callback(String topic, byte* payload, unsigned int length) {
@@ -425,44 +472,82 @@ void callback(String topic, byte* payload, unsigned int length) {
     
    }
 }
->>>>>>> parent of a4d8f17... implement out of bounds stops for commanded
 
-void setup() { 
-  Serial.begin(57600);
-  Serial.println("resetting");
-  LEDS.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
-  LEDS.setBrightness(84);
+void sendConnectMessage(int workingConnectedPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingConnectedPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Connected: " + workingPayload);
+   client.publish("/desk/connected", workingPayload);
+  }
+
+void sendHeightMessage(int workingHeightPayload){ 
+   char workingPayload[100];
+   float workingHeightPayloadFloat;
+   workingHeightPayloadFloat = workingHeightPayload/25.4;
+   //snprintf (workingPayload, 100, "%s", workingHeightPayloadFloat);
+   dtostrf(workingHeightPayloadFloat, 3, 1, workingPayload);
+   Serial.println((String)"float payload " + workingHeightPayloadFloat);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Height: " + workingPayload);
+   client.publish("/desk/height", workingPayload);
+  }
+
+void sendCommandedHeightMessage(int workingCommandedHeightPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingCommandedHeightPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Commanded Height: " + workingPayload);
+   client.publish("/desk/commandedheight", workingPayload);
+  }
+
+void sendErrorMessage(int workingErrorPayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingErrorPayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Error: " + workingPayload);
+   client.publish("/desk/error", workingPayload);
+  }
+
+void sendExecuteMessage(int workingExecutePayload){ 
+   char workingPayload[50];
+   snprintf (workingPayload, 100, "%d", workingExecutePayload);
+   Serial.print("Sending Message: ");
+   Serial.println((String)"Execute: " + workingPayload);
+   client.publish("/desk/execute", workingPayload);
+  }
+
+void sendTimeOnCount(){
+  long tempMinutesOnCount = 0;
+  char workingPayload[100];
+  tempMinutesOnCount = MotorSecondsOnCount / 60;
+  snprintf (workingPayload, 100, "%ld", tempMinutesOnCount);
+  NewMotorData = 0;
+  Serial.print("Sending Message: ");
+  Serial.println((String)"Minutes On Count: " + tempMinutesOnCount);
+  client.publish("/desk/MinutesOn", workingPayload);
 }
 
-void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i].nscale8(250); } }
+void eepromWriteSeconds(){
+  unsigned long tempEEPROMread = 0;
+  unsigned long tempEEPROMtoWrite = 0;
+  EEPROM.begin(4);
+  tempEEPROMread = EEPROM.read(1);
+  Serial.println((String)"Previous EEPROM: "+ tempEEPROMread);
+  MotorSecondsOnCount = tempEEPROMread + MotorSecondsOnCount;
+  EEPROM.write(1, MotorSecondsOnCount);
+  EEPROM.commit();
+  Serial.println((String)"EEPROM write :" + MotorSecondsOnCount);
+}
 
-void loop() { 
-  static uint8_t hue = 0;
-  Serial.print("x");
-  // First slide the led in one direction
-  for(int i = 0; i < NUM_LEDS; i++) {
-    // Set the i'th led to red 
-    leds[i] = CHSV(hue++, 255, 255);
-    // Show the leds
-    FastLED.show(); 
-    // now that we've shown the leds, reset the i'th led to black
-    // leds[i] = CRGB::Black;
-    fadeall();
-    // Wait a little bit before we loop around and do it again
-    delay(10);
-  }
-  Serial.print("x");
-
-  // Now go in the other direction.  
-  for(int i = (NUM_LEDS)-1; i >= 0; i--) {
-    // Set the i'th led to red 
-    leds[i] = CHSV(hue++, 255, 255);
-    // Show the leds
-    FastLED.show();
-    // now that we've shown the leds, reset the i'th led to black
-    // leds[i] = CRGB::Black;
-    fadeall();
-    // Wait a little bit before we loop around and do it again
-    delay(10);
-  }
+void eepromClear(){
+  EEPROM.begin(4);
+  EEPROM.write(1, 0);
+  EEPROM.commit();
+}
+void eepromReadSeconds(){
+  EEPROM.begin(4);
+  MotorSecondsOnCount = EEPROM.read(1);
+  EEPROM.commit();
+  Serial.println((String)"EEPROM read :" + MotorSecondsOnCount);
 }
