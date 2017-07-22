@@ -331,9 +331,9 @@ void ReadDistance() {
     ErrorCode = 0;    
     }
   if(ErrorCode == 0){ //ensure we don't reboot the whole shebang due to error codes on the I2C bus
-  distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
-  distance2 = sensor2.readRangeSingleMillimeters();
-  }
+    distance1 = sensor.readRangeSingleMillimeters(); //must be done in conjunction with the pin goign high or low, will  cause bizzare boot error if sensor is off and trying to read
+    distance2 = sensor2.readRangeSingleMillimeters();
+    }
     //Serial.println((String)"Sensor1: " + distance1);
     //Serial.println((String)"Sensor2: " + distance2);
   //smooth the distance readings
@@ -501,9 +501,17 @@ void sendCommandedHeightMessage(int workingCommandedHeightPayload){
    client.publish("/desk/commandedheight", workingPayload);
   }
 
-void sendErrorMessage(int workingErrorPayload){ 
+void sendErrorMessage(int workingErrorPayload){
+   const String Error0 = "undefined";
+   const String Error1 = "LIDAR booth problem on one or both"; //establish the error codes in plain text that will be moved by mqtt
+   const String Error2 = "undefined";
+   const String Error3 = "Motor up problem";
+   const String Error4 = "Motor Down problem";
+   const String Error5 = "Commanded height out of bounds";
+   const String Error6 = "Movement timeout";
+   String ErrorCodesArray[] = {Error0, Error1, Error2, Error3, Error4, Error5, Error6}; //turn them all into an array of strings
    char workingPayload[50];
-   snprintf (workingPayload, 100, "%d", workingErrorPayload);
+   ErrorCodesArray[workingErrorPayload].toCharArray(workingPayload, 50); //convert the strings into char arrays only in time to publish them
    Serial.print("Sending Message: ");
    Serial.println((String)"Error: " + workingPayload);
    client.publish("/desk/error", workingPayload);
