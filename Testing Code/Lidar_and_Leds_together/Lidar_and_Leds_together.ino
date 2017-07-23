@@ -12,9 +12,10 @@ The range readings are in units of mm. */
 #include <EEPROM.h>
 
 //wifi Initiation
-const char* ssid = "nestlink";
+const char* ssid = "nestlink1";
 const char* wifipassword = "nestlink";
 const char* mqtt_server = "192.168.0.127";
+int WifiTimeout = 5; //how many times to try to reconnect. roughly .5x in seconds
 int WifiOnline = 0;
 
 //setup pubsub
@@ -255,6 +256,7 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, 
 }
 
 void setup_wifi() {
+  int workingWifiTries = 0;
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
@@ -263,16 +265,20 @@ void setup_wifi() {
 
   WiFi.begin(ssid, wifipassword);
 
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED && workingWifiTries < WifiTimeout ) {
     delay(500);
     Serial.print(".");
+    workingWifiTries++;
+    WifiOnline = 0;
   }
+  if(WiFi.status() == WL_CONNECTED){
   randomSeed(micros());
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   WifiOnline = 1;
+  }
 }
 
 void reconnect() {
