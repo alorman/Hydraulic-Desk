@@ -12,7 +12,7 @@ The range readings are in units of mm. */
 #include <EEPROM.h>
 
 //wifi Initiation
-const char* ssid = "nestlink1";
+const char* ssid = "nestlink";
 const char* wifipassword = "nestlink";
 const char* mqtt_server = "192.168.0.127";
 int WifiTimeout = 5; //how many times to try to reconnect. roughly .5x in seconds
@@ -39,6 +39,7 @@ int ErrorCode = 0;
 int ExecuteFlag = 0;
 int ConnectionTries = 0;
 int ConnectionRetries = 5;
+int RetryInterval = 10000; 
 
 //Lidar initialization
 VL53L0X sensor;
@@ -93,6 +94,7 @@ unsigned long Timer1 = 0;
 unsigned long Timer2 = 0;
 unsigned long Timer3 = 0;
 unsigned long Timer4 = 0;
+unsigned long Timer5 = 0;
 unsigned long currentMillis = 0;
 int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
 
@@ -158,7 +160,18 @@ void loop() {
     SensorSleep = 0;
     Serial.println((String)"out of loop: State: " + SensorSleep);
     }
-    
+
+  //reconnect the mqtt if wifi comes back 
+  if(currentMillis - Timer5 >= RetryInterval){
+    Timer5 = currentMillis;
+    if(WiFi.status() == WL_CONNECTED && !client.connected()){
+      ConnectionRetries = 1;
+      ConnectionTries = 0;
+      Serial.println("reconnecting to MQTT after wifi loss");
+      client.setServer(mqtt_server, 1883);
+     }
+   }
+
   //Send motor on time packet over mqtt only when there's not a ton else to do)
   if(SensorSleep == 1 && NewMotorData == 1) {
     sendTimeOnCount();
@@ -283,7 +296,7 @@ void setup_wifi() {
 
 void reconnect() {
   // Loop until we're reconnected
-  if(!client.connected()&& ConnectionTries <= ConnectionRetries) {
+  if(!client.connected()&& ConnectionTries < ConnectionRetries) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
     String clientId = "ESP8266Client-"; 
