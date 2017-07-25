@@ -40,6 +40,7 @@ int ExecuteFlag = 0;
 int ConnectionTries = 0;
 int ConnectionRetries = 5;
 int RetryInterval = 10000; 
+int MQTTStatusFlag = 0; //variable to track if we should send mqtt message, preferably only once. 
 
 //Lidar initialization
 VL53L0X sensor;
@@ -173,16 +174,21 @@ void loop() {
    }
 
   //Send motor on time packet over mqtt only when there's not a ton else to do)
-  if(SensorSleep == 1 && NewMotorData == 1) {
+  
+  if(SensorSleep == 1 && MQTTStatusFlag == 1) {
     sendTimeOnCount();
     LastDistanceShot = AverageDistance; //stores the last value for comparison
     sendHeightMessage(LastDistanceShot);
+    MQTTStatusFlag = 0;
   }
   
   //Lidar Read Distance
   if(SensorSleep == 0){
     ReadDistance();
     Serial.println((String)"reading distances: " + AverageDistance);
+    MQTTStatusFlag = 1;
+    }else{
+    MQTTStatusFlag = 0;
     }
   
   //MQTT Check for connection, else 
