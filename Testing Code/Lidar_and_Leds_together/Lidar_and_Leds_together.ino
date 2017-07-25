@@ -21,13 +21,13 @@ int WifiOnline = 0;
 //setup pubsub
 WiFiClient espClient;
 PubSubClient client (espClient);
-int value = 0;
-String username = "homeassistant";
-String password = "";
+String clientId = "MagicalDesk-"; //in connect is appended with random follower
+String MQTTusername = "pi";
+String MQTTpassword = "raspberry";
 
 //MQTT topics and payloads
 char* ConnectedTopic = "/desk/connected";
-char* HeightTopic = "/desk/actualheight";
+char* HeightTopic = "/desk/height";
 char* CommandedHeightTopic = "/desk/commandedheight";
 char* ErrorTopic = "/desk/error";
 char* ExecuteTopic = "/desk/execute";
@@ -187,7 +187,7 @@ void loop() {
   
   //MQTT Check for connection, else 
   if (!client.connected()) {
-      reconnect();
+      MQTTreconnect();
       }
       client.loop();
       
@@ -294,15 +294,14 @@ void setup_wifi() {
   }
 }
 
-void reconnect() {
+void MQTTreconnect() {
   // Loop until we're reconnected
   if(!client.connected()&& ConnectionTries < ConnectionRetries) {
     Serial.print("Attempting MQTT connection...");
-    // Create a random client ID
-    String clientId = "ESP8266Client-"; 
+    // Create a random client ID 
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), MQTTusername.c_str(), MQTTpassword.c_str())) {
       Serial.println("connected"); //once connected set connected status to 1
       ConnectedStatus = 1;
       //client.publish(ConnectedTopic, connectionStatus); //reconnect to all the topics we need to
