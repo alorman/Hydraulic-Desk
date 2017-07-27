@@ -61,6 +61,8 @@ CRGB leds[NUM_LEDS];
 
 //Pin setup
 #define SW1Pin D5
+#define SW2Pin D7
+#define SW3Pin D8
 
 //Global scripting variables
 int distance1 = 0;
@@ -149,6 +151,8 @@ void loop() {
   
   //read the analog and digital values
   Button1 = digitalRead(SW1Pin);
+  Button2 = digitalRead(SW2Pin);
+  Button3 = digitalRead(SW3Pin);
   
   //enable distance sensing when buttons are pressed and keep on for 5 seconds for good measure
   if(Button1 == 1 || Button2 == 1 || Button3 == 1 || Button4 == 1){
@@ -509,7 +513,6 @@ void sendHeightMessage(int workingHeightPayload){
    char workingPayload[100];
    float workingHeightPayloadFloat;
    workingHeightPayloadFloat = workingHeightPayload/25.4;
-   //snprintf (workingPayload, 100, "%s", workingHeightPayloadFloat);
    dtostrf(workingHeightPayloadFloat, 3, 1, workingPayload);
    Serial.println((String)"float payload " + workingHeightPayloadFloat);
    Serial.print("Sending Message: ");
