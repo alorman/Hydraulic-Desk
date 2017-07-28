@@ -145,6 +145,9 @@ void setup(){
 
 ////////////////////////////////////// Main Loop
 void loop() {
+
+  strip.Begin();
+  strip.Show();
   
   //Global timing functions
   currentMillis = millis();
@@ -239,13 +242,13 @@ void loop() {
    //sendCommandedHeightMessage(100);
    //Serial.println(millis());
    //sendHeightMessage(AverageDistance);
-   //delay(1);
-   strip.Show();
 }
 
 /////////////////////////////////////////Functions
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
+  strip.Begin();
+  strip.Show();
   float workingHFloat = 0.0;
   float workingSFloat = 0.0;
   float workingVFloat = 0.0;
@@ -266,7 +269,7 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, f
     strip.SetPixelColor(workingLEDNumber, workingHSL2);  
   }
   strip.Show();
-  //delay(1);
+  delay(10);
 }
 
 void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
@@ -288,7 +291,7 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, 
   }
   //Serial.println("Executing fade out loop");
   strip.Show();
-  //delay(1);
+  delay(10);
 }
 
 void setup_wifi() {
