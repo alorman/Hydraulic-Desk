@@ -2,14 +2,17 @@
 range measurements with the VL53L0X. It is based on
 vl53l0x_ContinuousRanging_Example.c from the VL53L0X API.
 The range readings are in units of mm. */
-#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+//#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 #include <Wire.h>
 #include <VL53L0X.h>
-#include <FastLED.h>
+#include <NeoPixelBus.h>
 #include <AnalogSmooth.h>
 #include <PubSubClient.h>
-#include <ESP8266WiFi.h>
-#include <EEPROM.h>
+#include <WiFi.h>
+#include <Preferences.h>
+
+//setup preferences for esp32
+Preferences preferences;
 
 //wifi Initiation
 const char* ssid = "nestlink";
@@ -45,24 +48,22 @@ int MQTTStatusFlag = 0; //variable to track if we should send mqtt message, pref
 //Lidar initialization
 VL53L0X sensor;
 VL53L0X sensor2;
-int Lidar1ShutdownPin = D3;
+int Lidar1ShutdownPin = 16;
 int Lidar1Shutdown = 1; //must be 1 to read sensors. In conjuction with timeout being at 0
 int LidarTimeOut = 0; //global lidar timeout used in function call to setup
 
 //LED options
-#define LED_PIN     6
+#define LED_PIN     21
 #define NUM_LEDS    4
 #define BRIGHTNESS  255
-#define LED_TYPE    WS2811
-#define COLOR_ORDER GRB
-CRGB leds[NUM_LEDS];
-#define UPDATES_PER_SECOND 100
-#define FASTLED_ALLOW_INTERRUPTS 0
+#define LED_FEATURE NeoGrbFeature
+#define LED_METHOD Neo800KbpsMethod
+NeoPixelBus<LED_FEATURE, LED_METHOD> strip(NUM_LEDS, LED_PIN);
 
 //Pin setup
-#define SW1Pin D5
-#define SW2Pin D7
-#define SW3Pin D8
+#define SW1Pin 15
+#define SW2Pin 2
+#define SW3Pin 0
 
 //Global scripting variables
 int distance1 = 0;
@@ -74,6 +75,7 @@ int AllowableTilt = 55; //maximum allowable tilt in mm
 int SensorSleep = 0; //flag to stop firing laser pings all the time
 int SuspendInterval = 5000; //mS
 unsigned long MotorSecondsOnCount = 0;
+unsigned long MotorMSecondsOnCount = 0;
 unsigned long MotorTempOnCount = 0;
 int newCommandReady = 0;
 float PreviousDistance = 0;
@@ -87,8 +89,8 @@ int HydPressure = 0;
 int HydPressureLimit = 250; //PSI
 
 //Global Output variables
-#define MotorUpPin D7
-#define MotorDownPin D8
+#define MotorUpPin 7
+#define MotorDownPin 8
 int MotorRunning = 0;
 int NewMotorData = 0;
 
@@ -99,7 +101,7 @@ unsigned long Timer3 = 0;
 unsigned long Timer4 = 0;
 unsigned long Timer5 = 0;
 unsigned long currentMillis = 0;
-int workingFadeCycle[] = {0,0,0,0}; //declare array for working timing
+float workingFadeCycle[] = {0.0,0.0,0.0,0.0}; //declare array for working timing
 
 //Smoothing setup
 int SmoothDistance1 = 0;
@@ -114,17 +116,16 @@ AnalogSmooth SmoothSensor2 = AnalogSmooth(15);
 /////////////////////////////////// Main Setup
 void setup(){
   
-  Serial.begin(250000);
+  Serial.begin(115200);
 
   //pin mode setup
   pinMode(SW1Pin, INPUT);
   pinMode(Lidar1ShutdownPin, OUTPUT);
   digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown); 
   
-  //Initialized LED array
-  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
-  FastLED.clear(); //clear all LEDs before we start too much
-  FastLED.show();
+  //Clear the LED array
+  strip.Begin();
+  strip.Show();
   delay(5);
 
   //setup wifi
@@ -155,7 +156,7 @@ void loop() {
   Button3 = digitalRead(SW3Pin);
   
   //enable distance sensing when buttons are pressed and keep on for 5 seconds for good measure
-  if(Button1 == 1 || Button2 == 1 || Button3 == 1 || Button4 == 1){
+  if(Button1 == 1 || Button2 == 1){
     Timer2 = currentMillis;
     }
   if(currentMillis - Timer2 >= SuspendInterval){
@@ -164,6 +165,7 @@ void loop() {
     }else{
     SensorSleep = 0;
     Serial.println((String)"out of loop: State: " + SensorSleep);
+    Serial.println((String)"current time: " + currentMillis + " Timer 2: " + Timer2);
     }
 
   //reconnect the mqtt if wifi comes back 
@@ -204,11 +206,11 @@ void loop() {
   //Run the motor UP on button press and check for tilt angles otherwise thrown and error and flash the lights
   if(Button1 == HIGH && newCommandReady == 0) {
     MotorUp();
-    LEDFadeIN(0,219,77,100,75); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
+    LEDFadeIN(0,219,77,100,0.05); //LEDnumber, Hue, Sat, Value, (use normal color picker, range is 0-360, 0-100, 0-100) FadeSpeed(higher is faster)
     Serial.println("motor running up on button");
     }
     if(Button1 == LOW && newCommandReady == 0) {
-    LEDFadeOUT(0,219,77,100,75); //specify the color we want to fade to, in 0-255 format
+    LEDFadeOUT(0,219,77,100,0.1); //specify the color we want to fade to, in 0-255 format
     MotorAllStop();
     //Serial.println("motor stopping on key not pressed");
     }
@@ -238,44 +240,55 @@ void loop() {
    //sendCommandedHeightMessage(100);
    //Serial.println(millis());
    //sendHeightMessage(AverageDistance);
+   delay(10);
 }
 
 /////////////////////////////////////////Functions
 
-void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
-  workingH = map(workingH, 0, 360, 0, 255); //map H value to 0-360 so that expressions going in can be from a normal color picker
-  workingS = map(workingS, 0, 100, 0, 255);
-  workingV = map(workingV, 0, 100, 0, 255);
-  int workingEndSpeed = 255- workingFadeSpeed;
+void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
+  float workingHFloat = 0.0;
+  float workingSFloat = 0.0;
+  float workingVFloat = 0.0;
+  workingHFloat = (float)workingH/(float)360.0; //remap the color picker to the stupid -0.0 to 1.0 values this requires
+  workingSFloat = (float)workingS/(float)100.0;
+  workingVFloat = (float)workingV/(float)100.0;
+  float workingEndSpeed = 1.0 - workingFadeSpeed;
   if(workingFadeCycle[workingLEDNumber] < workingEndSpeed)
   {
     workingFadeCycle[workingLEDNumber] = workingFadeCycle[workingLEDNumber] + workingFadeSpeed; //adjust this number for speed of gain
-    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeCycle[workingLEDNumber]);
-    Serial.println((String)"in loop 2 " + workingFadeCycle[workingLEDNumber]);
+    HslColor workingHSL(workingHFloat, workingSFloat, workingFadeCycle[workingLEDNumber]);
+    strip.SetPixelColor(workingLEDNumber, workingHSL);
+    Serial.println((String)"in fade in loop :" + workingHFloat + "," + workingSFloat + "," + workingFadeCycle[workingLEDNumber]);
   }
   else
   {
-    leds[workingLEDNumber] = CHSV (workingH, workingS, 255);
+    HslColor workingHSL2(workingHFloat, workingSFloat, 1.0);
+    strip.SetPixelColor(workingLEDNumber, workingHSL2);  
   }
-  FastLED.show();
+  strip.Show();
+  delay(5);
 }
 
-void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, int workingFadeSpeed){
-  workingH = map(workingH, 0, 360, 0, 255); //map H value to 0-360 so that expressions going in can be from a normal color picker
-  workingS = map(workingS, 0, 100, 0, 255);
-  workingV = map(workingV, 0, 100, 0, 255);  
-  int workingEndSpeed = 0 + workingFadeSpeed;
-  if(workingFadeCycle[workingLEDNumber] >= workingEndSpeed)
-  {
-    workingFadeCycle[workingLEDNumber] = workingFadeCycle[workingLEDNumber] - workingFadeSpeed; //adjust this number for speed of gain
-    leds[workingLEDNumber] = CHSV(workingH,workingS,workingFadeCycle[workingLEDNumber]);
-    Serial.println((String)"in loop 3 " + workingFadeCycle[workingLEDNumber]);
+void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
+  float workingHFloat = 0.0;
+  float workingSFloat = 0.0;
+  float workingVFloat = 0.0;
+  workingHFloat = (float)workingH/(float)360.0; //remap the color picker to the stupid -0.0 to 1.0 values this requires
+  workingSFloat = (float)workingS/(float)100.0;
+  workingVFloat = (float)workingV/(float)100.0;
+  float workingEndSpeed = 0.0 + workingFadeSpeed;
+  if(workingFadeCycle[workingLEDNumber] >= workingEndSpeed){
+    workingFadeCycle[workingLEDNumber] = workingFadeCycle[workingLEDNumber] - workingFadeSpeed;//adjust this number for speed of gain
+    HslColor workingHSL(workingHFloat, workingSFloat, workingFadeCycle[workingLEDNumber]);
+    strip.SetPixelColor(workingLEDNumber, workingHSL);
+    Serial.println((String)"in fade out loop " + workingFadeCycle[workingLEDNumber]);
+  }else{
+    HslColor workingHSL2(workingHFloat, workingSFloat, 0.0);
+    strip.SetPixelColor(workingLEDNumber, workingHSL2);  
   }
-  else
-  {
-    leds[workingLEDNumber] = CHSV (workingH, workingS, 0);
-  }
-  FastLED.show();
+  //Serial.println("Executing fade out loop");
+  strip.Show();
+  delay(5);
 }
 
 void setup_wifi() {
@@ -336,7 +349,7 @@ void SetupTwinLidars () {
   Lidar1Shutdown = 0;
   digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown);
   delay(100);
-  Wire.begin();
+  Wire.begin(23,22);
   sensor2.init(true);
   sensor2.setAddress((uint8_t)26);
   sensor2.setTimeout(LidarTimeOut); //0 seems to work best here although units are not fully understood
@@ -425,8 +438,8 @@ void MotorAllStop(){
   digitalWrite(MotorDownPin, LOW);
   digitalWrite(MotorUpPin, LOW);
   if(MotorRunning == 1) {
-    MotorSecondsOnCount = (currentMillis - MotorTempOnCount);
-    MotorSecondsOnCount = MotorSecondsOnCount / 1000;
+    MotorMSecondsOnCount = (currentMillis - MotorTempOnCount);
+    MotorSecondsOnCount = MotorMSecondsOnCount / 1000;
     eepromWriteSeconds();
     }
   //MotorTempOnCount = 0;
@@ -479,7 +492,7 @@ void MotorToCommandedHeight(float workingCommandedHeight){
  }
 } 
  
-void callback(String topic, byte* payload, unsigned int length) {
+void callback(char* topic, byte* payload, unsigned int length) {
   String workingCommandedHeightString = "0";
   int i = 0;
   Serial.print("Message arrived [");
@@ -552,29 +565,32 @@ void sendTimeOnCount(){
   NewMotorData = 0;
   Serial.print("Sending Message: ");
   Serial.println((String)"Minutes On Count: " + tempMinutesOnCount);
+  Serial.println((String)"Seconds on count: " + MotorSecondsOnCount);
   client.publish("/desk/MinutesOn", workingPayload);
 }
 
 void eepromWriteSeconds(){
+  //setup the preferences namespace for esp-32
+  preferences.begin("MotorLife", false);
   unsigned long tempEEPROMread = 0;
   unsigned long tempEEPROMtoWrite = 0;
-  EEPROM.begin(4);
-  tempEEPROMread = EEPROM.read(1);
+  tempEEPROMread = preferences.getUInt("SecondsOnCount", 0);
   Serial.println((String)"Previous EEPROM: "+ tempEEPROMread);
   MotorSecondsOnCount = tempEEPROMread + MotorSecondsOnCount;
-  EEPROM.write(1, MotorSecondsOnCount);
-  EEPROM.commit();
+  preferences.putUInt("SecondsOnCount", MotorSecondsOnCount);
+  preferences.end();
   Serial.println((String)"EEPROM write :" + MotorSecondsOnCount);
 }
 
 void eepromClear(){
-  EEPROM.begin(4);
-  EEPROM.write(1, 0);
-  EEPROM.commit();
+  //setup the preferences namespace for esp-32
+  preferences.begin("MotorLife", false);
+  preferences.remove("SecondsOnCount");
+  Serial.println("EEPROM Cleared ...........");
 }
 void eepromReadSeconds(){
-  EEPROM.begin(4);
-  MotorSecondsOnCount = EEPROM.read(1);
-  EEPROM.commit();
+  //setup the preferences namespace for esp-32
+  preferences.begin("MotorLife", false);
+  MotorSecondsOnCount = preferences.getUInt("SecondsOnCount", 0);
   Serial.println((String)"EEPROM read :" + MotorSecondsOnCount);
 }
