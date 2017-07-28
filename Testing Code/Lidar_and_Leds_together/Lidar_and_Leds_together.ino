@@ -122,11 +122,6 @@ void setup(){
   pinMode(SW1Pin, INPUT);
   pinMode(Lidar1ShutdownPin, OUTPUT);
   digitalWrite(Lidar1ShutdownPin, Lidar1Shutdown); 
-  
-  //Clear the LED array
-  strip.Begin();
-  strip.Show();
-  delay(5);
 
   //setup wifi
   setup_wifi();
@@ -141,6 +136,10 @@ void setup(){
   
   //Setup Lidars
   SetupTwinLidars();
+  
+  //Clear the LED array (moved down here to go after any of the blocking setup commands)
+  strip.Begin();
+  strip.Show();
   Serial.println("Setup Done");
 }
 
@@ -240,7 +239,8 @@ void loop() {
    //sendCommandedHeightMessage(100);
    //Serial.println(millis());
    //sendHeightMessage(AverageDistance);
-   delay(10);
+   //delay(1);
+   strip.Show();
 }
 
 /////////////////////////////////////////Functions
@@ -266,7 +266,7 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, f
     strip.SetPixelColor(workingLEDNumber, workingHSL2);  
   }
   strip.Show();
-  delay(5);
+  //delay(1);
 }
 
 void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
@@ -288,7 +288,7 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, 
   }
   //Serial.println("Executing fade out loop");
   strip.Show();
-  delay(5);
+  //delay(1);
 }
 
 void setup_wifi() {
