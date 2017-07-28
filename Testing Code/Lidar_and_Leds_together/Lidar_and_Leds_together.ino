@@ -148,6 +148,7 @@ void loop() {
 
   strip.Begin();
   strip.Show();
+  delay(10);
   
   //Global timing functions
   currentMillis = millis();
@@ -247,8 +248,6 @@ void loop() {
 /////////////////////////////////////////Functions
 
 void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
-  strip.Begin();
-  strip.Show();
   float workingHFloat = 0.0;
   float workingSFloat = 0.0;
   float workingVFloat = 0.0;
@@ -269,7 +268,6 @@ void LEDFadeIN(int workingLEDNumber, int workingH, int workingS, int workingV, f
     strip.SetPixelColor(workingLEDNumber, workingHSL2);  
   }
   strip.Show();
-  delay(10);
 }
 
 void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, float workingFadeSpeed){
@@ -291,7 +289,6 @@ void LEDFadeOUT(int workingLEDNumber, int workingH, int workingS, int workingV, 
   }
   //Serial.println("Executing fade out loop");
   strip.Show();
-  delay(10);
 }
 
 void setup_wifi() {
@@ -577,10 +574,10 @@ void eepromWriteSeconds(){
   preferences.begin("MotorLife", false);
   unsigned long tempEEPROMread = 0;
   unsigned long tempEEPROMtoWrite = 0;
-  tempEEPROMread = preferences.getUInt("SecondsOnCount", 0);
+  tempEEPROMread = preferences.getULong("SecondsOnCount", 0);
   Serial.println((String)"Previous EEPROM: "+ tempEEPROMread);
   MotorSecondsOnCount = tempEEPROMread + MotorSecondsOnCount;
-  preferences.putUInt("SecondsOnCount", MotorSecondsOnCount);
+  preferences.putULong("SecondsOnCount", MotorSecondsOnCount);
   preferences.end();
   Serial.println((String)"EEPROM write :" + MotorSecondsOnCount);
 }
@@ -594,6 +591,6 @@ void eepromClear(){
 void eepromReadSeconds(){
   //setup the preferences namespace for esp-32
   preferences.begin("MotorLife", false);
-  MotorSecondsOnCount = preferences.getUInt("SecondsOnCount", 0);
+  MotorSecondsOnCount = preferences.getULong("SecondsOnCount", 0);
   Serial.println((String)"EEPROM read :" + MotorSecondsOnCount);
 }
